@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getSocket } from '../../lib/socket';
-import { GameState } from '../../lib/types';
+import { GameState, RoleLimits } from '../../lib/types';
 import HostDashboard from '../../components/HostDashboard';
 import CinematicIntro from '../../components/CinematicIntro';
 import EndgameScreen from '../../components/EndgameScreen';
@@ -136,6 +136,29 @@ export default function AdminPage() {
     if (confirm('Скинути всю кімнату до початкового стану (Лобі)? Всі прогреси скинуться.')) {
       getSocket().emit('reset_room', { roomCode: gameState.roomCode });
     }
+  };
+
+  const handleKickPlayer = (playerId: string) => {
+    if (!gameState) return;
+    getSocket().emit('kick_player', { roomCode: gameState.roomCode, playerId });
+  };
+
+  const handleResolveTiebreaker = (groupId: string, winningOptionId: string, isRandom?: boolean) => {
+    if (!gameState) return;
+    getSocket().emit('resolve_tiebreaker', {
+      roomCode: gameState.roomCode,
+      groupId,
+      winningOptionId,
+      isRandom,
+    });
+  };
+
+  const handleUpdateRoleLimits = (newLimits: RoleLimits) => {
+    if (!gameState) return;
+    getSocket().emit('update_role_limits', {
+      roomCode: gameState.roomCode,
+      roleLimits: newLimits,
+    });
   };
 
   // ─── 1. Password Protection Modal ──────────────────────────────
@@ -304,6 +327,9 @@ export default function AdminPage() {
           onForceStartVoting={handleForceStartVoting}
           onForceTallyVotes={handleForceTallyVotes}
           onNextCrisis={handleNextCrisis}
+          onKickPlayer={handleKickPlayer}
+          onResolveTiebreaker={handleResolveTiebreaker}
+          onUpdateRoleLimits={handleUpdateRoleLimits}
         />
       )}
     </div>

@@ -8,23 +8,36 @@ import {
   HierarchyLevel,
   Department,
   GamePhase,
+  RoleLimits,
 } from '../lib/types';
 import { generateSalaryAndLore } from '../lib/lore';
-import HostDashboard from '../components/HostDashboard';
 import PlayerTerminal from '../components/PlayerTerminal';
 import CinematicIntro from '../components/CinematicIntro';
 import EndgameScreen from '../components/EndgameScreen';
-import { Skull, Crown, User, Plug, ShieldAlert, KeyRound, RotateCcw } from 'lucide-react';
+import { Skull, User, Plug, ShieldAlert, RotateCcw, ArrowLeft, UserX, CheckCircle2 } from 'lucide-react';
 
 export default function HomePage() {
-  const [isHost, setIsHost] = useState(false);
   const [inGame, setInGame] = useState(false);
 
-  // Player Onboarding Fields
+  // Two-Step Join Flow States
+  const [joinStep, setJoinStep] = useState<1 | 2>(1);
+  const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [connectedRoomCode, setConnectedRoomCode] = useState('');
+  const [roomRoleLimits, setRoomRoleLimits] = useState<RoleLimits | null>(null);
+  const [roomRoleCounts, setRoomRoleCounts] = useState<Record<string, number>>({
+    'Керівник': 0,
+    'Тімлід': 0,
+    'Менеджер': 0,
+  });
+
+  // Step 2: Player Onboarding Fields
   const [playerName, setPlayerName] = useState('');
   const [playerLevel, setPlayerLevel] = useState<HierarchyLevel>('Менеджер');
   const [playerDepartment, setPlayerDepartment] = useState<Department>('Форвард');
-  const [roomCodeInput, setRoomCodeInput] = useState('');
+
+  // Kicked State
+  const [isKicked, setIsKicked] = useState(false);
+  const [kickedReason, setKickedReason] = useState('');
 
   // Active User & Synced Game State
   const [currentUser, setCurrentUser] = useState<Player | null>(null);
@@ -33,23 +46,18 @@ export default function HomePage() {
 
   // Initialize Socket.io connection & restore session (isolated per browser tab via sessionStorage)
   useEffect(() => {
-    // Clear old shared localStorage if present so it doesn't pollute tabs
     localStorage.removeItem('corporate_bunker_session');
 
     const socket = getSocket();
 
     socket.on('connect', () => {
-      // Check for saved session in sessionStorage (specific to THIS browser tab!)
       const savedSession = sessionStorage.getItem('corporate_bunker_session');
       if (savedSession) {
         try {
           const parsed = JSON.parse(savedSession);
-          if (parsed.isHost && parsed.roomCode) {
-            setIsHost(true);
-            setInGame(true);
-            socket.emit('join_room', { roomCode: parsed.roomCode, isHost: true });
-          } else if (parsed.player && parsed.roomCode) {
+          if (parsed.player && parsed.roomCode) {
             setCurrentUser(parsed.player);
+            setConnectedRoomCode(parsed.roomCode);
             setInGame(true);
             socket.emit('join_room', {
               roomCode: parsed.roomCode,
@@ -63,9 +71,62 @@ export default function HomePage() {
       }
     });
 
+    // Step 1 check room result
+    socket.on('room_check_result', (data: {
+      exists: boolean;
+      roomCode?: string;
+      roleLimits?: RoleLimits;
+      roleCounts?: Record<string, number>;
+      error?: string;
+    }) => {
+      if (data.exists && data.roomCode) {
+        setConnectedRoomCode(data.roomCode);
+        if (data.roleLimits) setRoomRoleLimits(data.roleLimits);
+        if (data.roleCounts) {
+          setRoomRoleCounts(data.roleCounts);
+          // If default selected level is full, pick next available
+          const limits = data.roleLimits || { 'Керівник': 2, 'Тімлід': 4, 'Менеджер': 0 };
+          if (limits['Менеджер'] > 0 && (data.roleCounts['Менеджер'] || 0) >= limits['Менеджер']) {
+            if (limits['Тімлід'] === 0 || (data.roleCounts['Тімлід'] || 0) < limits['Тімлід']) {
+              setPlayerLevel('Тімлід');
+            } else if (limits['Керівник'] === 0 || (data.roleCounts['Керівник'] || 0) < limits['Керівник']) {
+              setPlayerLevel('Керівник');
+            }
+          }
+        }
+        setJoinStep(2);
+        setErrorMsg(null);
+      } else {
+        setErrorMsg(data.error || 'Кімнату не знайдено.');
+      }
+    });
+
+    // Kicked by Admin
+    socket.on('kicked_from_room', (data: { reason?: string }) => {
+      setIsKicked(true);
+      setKickedReason(data?.reason || 'Вас було видалено ведучим (Admin).');
+      sessionStorage.removeItem('corporate_bunker_session');
+      localStorage.removeItem('corporate_bunker_session');
+      setCurrentUser(null);
+      setGameState(null);
+      setInGame(false);
+      setJoinStep(1);
+    });
+
     socket.on('state_update', (updatedState: GameState) => {
       setGameState(updatedState);
-      // If we are a player, update our own profile reference from server state
+      if (updatedState.roleLimits) {
+        setRoomRoleLimits(updatedState.roleLimits);
+      }
+      // Update role counts dynamically
+      const counts: Record<string, number> = { 'Керівник': 0, 'Тімлід': 0, 'Менеджер': 0 };
+      Object.values(updatedState.players).forEach((p) => {
+        if (!p.isEliminated && counts[p.level] !== undefined) {
+          counts[p.level]++;
+        }
+      });
+      setRoomRoleCounts(counts);
+
       if (currentUser && updatedState.players[currentUser.id]) {
         setCurrentUser(updatedState.players[currentUser.id]);
       }
@@ -92,6 +153,8 @@ export default function HomePage() {
     });
 
     return () => {
+      socket.off('room_check_result');
+      socket.off('kicked_from_room');
       socket.off('state_update');
       socket.off('timer_tick');
       socket.off('error_message');
@@ -100,27 +163,23 @@ export default function HomePage() {
 
   // ─── ACTION HANDLERS ──────────────────────────────────────────────
 
-  // 1. Create Room as Host
-  const handleCreateRoom = () => {
-    const randomCode = 'bunker-' + Math.floor(1000 + Math.random() * 9000);
-    const socket = getSocket();
-    setIsHost(true);
-    setInGame(true);
-
-    // Isolated per tab via sessionStorage
-    sessionStorage.setItem(
-      'corporate_bunker_session',
-      JSON.stringify({ isHost: true, roomCode: randomCode })
-    );
-
-    socket.emit('join_room', { roomCode: randomCode, isHost: true });
+  // Step 1: Connect to Room
+  const handleConnectRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = roomCodeInput.trim().toLowerCase();
+    if (!cleanCode) {
+      setErrorMsg('Будь ласка, введіть код кімнати.');
+      return;
+    }
+    setErrorMsg(null);
+    getSocket().emit('check_room', { roomCode: cleanCode });
   };
 
-  // 2. Join Room as Player
+  // Step 2: Complete Player Onboarding & Join
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanName = playerName.trim();
-    const cleanCode = roomCodeInput.trim().toLowerCase();
+    const cleanCode = connectedRoomCode.trim().toLowerCase() || roomCodeInput.trim().toLowerCase();
 
     if (!cleanName) {
       setErrorMsg("Будь ласка, введіть ваше ім'я та прізвище.");
@@ -130,6 +189,15 @@ export default function HomePage() {
       setErrorMsg('Будь ласка, введіть код кімнати.');
       return;
     }
+
+    // Role limit validation
+    const limit = roomRoleLimits ? roomRoleLimits[playerLevel] : 0;
+    const currentCount = roomRoleCounts[playerLevel] || 0;
+    if (limit > 0 && currentCount >= limit) {
+      setErrorMsg(`Ліміт на роль "${playerLevel}" вичерпано (${currentCount}/${limit}). Оберіть іншу роль.`);
+      return;
+    }
+
     if (playerDepartment === 'Над усіма' && playerLevel !== 'Керівник') {
       setErrorMsg('Департамент "Над усіма" доступний тільки для Керівників.');
       return;
@@ -329,8 +397,60 @@ export default function HomePage() {
 
   // ─── RENDER ROUTING ───────────────────────────────────────────────
 
-  // View A: Onboarding & Entry Point
+  // ─── RENDER ROUTING ───────────────────────────────────────────────
+
+  // View: Kicked by Host Screen
+  if (isKicked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass-card w-full max-w-md p-8 text-center space-y-6 border border-red-500/50 neon-glow-red">
+          <div className="w-16 h-16 rounded-full bg-red-950/80 border-2 border-red-500 flex items-center justify-center mx-auto text-red-500 animate-pulse">
+            <UserX className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-widest text-red-500 neon-text-red">
+              ВАС БУЛО ВИДАЛЕНО З ГРИ
+            </h1>
+            <p className="text-xs text-gray-300 font-mono">
+              {kickedReason || 'Адміністратор бункеру вигнав вас із симуляції.'}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-lg bg-black/60 border border-gray-800 text-[11px] text-gray-400 font-sans">
+            Ваше сесійне з'єднання було миттєво розірвано. Ви більше не є частиною команди бункеру.
+          </div>
+
+          <button
+            onClick={() => {
+              setIsKicked(false);
+              setJoinStep(1);
+              setRoomCodeInput('');
+              setErrorMsg(null);
+            }}
+            className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-lg transition-all text-xs"
+          >
+            Повернутися на Головну
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // View A: Onboarding & Entry Point (Strictly Player-Only 2-Step Flow)
   if (!inGame || !gameState) {
+    const headLimit = roomRoleLimits?.['Керівник'] ?? 2;
+    const headCount = roomRoleCounts?.['Керівник'] ?? 0;
+    const isHeadFull = headLimit > 0 && headCount >= headLimit;
+
+    const tlLimit = roomRoleLimits?.['Тімлід'] ?? 4;
+    const tlCount = roomRoleCounts?.['Тімлід'] ?? 0;
+    const isTLFull = tlLimit > 0 && tlCount >= tlLimit;
+
+    const mgrLimit = roomRoleLimits?.['Менеджер'] ?? 0;
+    const mgrCount = roomRoleCounts?.['Менеджер'] ?? 0;
+    const isMgrFull = mgrLimit > 0 && mgrCount >= mgrLimit;
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="glass-card w-full max-w-lg p-6 sm:p-8 space-y-6 text-center">
@@ -345,57 +465,47 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Mode Switch Tabs */}
-          <div className="flex border border-gray-700 rounded-lg overflow-hidden text-xs sm:text-sm font-bold uppercase tracking-wider">
-            <button
-              onClick={() => setIsHost(false)}
-              className={`flex-1 py-3 transition-colors flex items-center justify-center gap-1.5 ${
-                !isHost
-                  ? 'bg-red-600/20 text-red-400 border-b-2 border-red-500'
-                  : 'text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              <User className="w-4 h-4" /> Я Гравець
-            </button>
-            <button
-              onClick={() => setIsHost(true)}
-              className={`flex-1 py-3 transition-colors flex items-center justify-center gap-1.5 ${
-                isHost
-                  ? 'bg-red-600/20 text-red-400 border-b-2 border-red-500'
-                  : 'text-gray-400 hover:text-gray-200'
-              }`}
-            >
-              <Crown className="w-4 h-4" /> Я Ведучий
-            </button>
-          </div>
-
-          {/* Host Mode UI */}
-          {isHost ? (
-            <div className="space-y-4 pt-2">
-              <p className="text-xs text-gray-300 font-sans">
-                Створіть ігрову кімнату для проекції на великий екран.
-              </p>
-              <button
-                onClick={handleCreateRoom}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 shadow-[0_0_25px_rgba(239,68,68,0.5)] text-sm sm:text-base flex items-center justify-center gap-2"
-              >
-                <Crown className="w-5 h-5" />
-                <span>Створити Кімнату</span>
-              </button>
-
-              <div className="pt-2">
-                <a
-                  href="/admin"
-                  className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-mono underline"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>Перейти до захищеної Панелі СЕО (/admin)</span>
-                </a>
+          {joinStep === 1 ? (
+            /* STEP 1: Room Connect */
+            <form onSubmit={handleConnectRoom} className="space-y-4 text-left pt-2">
+              <div>
+                <label className="text-[11px] font-mono text-gray-400 uppercase tracking-wide block mb-1.5">
+                  Крок 1: Введіть Код Кімнати:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={roomCodeInput}
+                  onChange={(e) => setRoomCodeInput(e.target.value)}
+                  placeholder="напр. bunker-4829"
+                  className="w-full px-4 py-3.5 bg-black/60 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:border-green-500 focus:outline-none font-mono tracking-wider"
+                />
               </div>
-            </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.4)] text-sm sm:text-base flex items-center justify-center gap-2"
+              >
+                <Plug className="w-5 h-5" />
+                <span>Підключитися до Кімнати</span>
+              </button>
+            </form>
           ) : (
-            /* Player Mode UI */
-            <form onSubmit={handleJoinRoom} className="space-y-3.5 text-left pt-2">
+            /* STEP 2: Name & Role Selection */
+            <form onSubmit={handleJoinRoom} className="space-y-4 text-left pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-800">
+                <span className="text-xs text-green-400 font-mono flex items-center gap-1.5 font-bold">
+                  <CheckCircle2 className="w-4 h-4" /> Кімната: {connectedRoomCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setJoinStep(1)}
+                  className="text-[11px] text-gray-400 hover:text-gray-200 font-mono flex items-center gap-1 underline"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Змінити код
+                </button>
+              </div>
+
               <div>
                 <label className="text-[11px] font-mono text-gray-400 uppercase tracking-wide block mb-1">
                   Ім'я та Прізвище:
@@ -420,9 +530,36 @@ export default function HomePage() {
                     onChange={(e) => setPlayerLevel(e.target.value as HierarchyLevel)}
                     className="w-full px-3 py-3 bg-black/60 border border-gray-700 rounded-lg text-sm text-gray-100 focus:border-green-500 focus:outline-none cursor-pointer"
                   >
-                    <option value="Керівник">Керівник (Level 1)</option>
-                    <option value="Тімлід">Тімлід (Level 2)</option>
-                    <option value="Менеджер">Менеджер (Level 3)</option>
+                    {/* Head option */}
+                    <option
+                      value="Керівник"
+                      disabled={isHeadFull}
+                      className={isHeadFull ? 'text-gray-600 bg-gray-900' : ''}
+                    >
+                      {isHeadFull
+                        ? `Керівник (Level 1) — Заповнено (${headCount}/${headLimit})`
+                        : `Керівник (Level 1)${headLimit > 0 ? ` (${headCount}/${headLimit})` : ''}`}
+                    </option>
+                    {/* Team Lead option */}
+                    <option
+                      value="Тімлід"
+                      disabled={isTLFull}
+                      className={isTLFull ? 'text-gray-600 bg-gray-900' : ''}
+                    >
+                      {isTLFull
+                        ? `Тімлід (Level 2) — Заповнено (${tlCount}/${tlLimit})`
+                        : `Тімлід (Level 2)${tlLimit > 0 ? ` (${tlCount}/${tlLimit})` : ''}`}
+                    </option>
+                    {/* Manager option */}
+                    <option
+                      value="Менеджер"
+                      disabled={isMgrFull}
+                      className={isMgrFull ? 'text-gray-600 bg-gray-900' : ''}
+                    >
+                      {isMgrFull
+                        ? `Менеджер (Level 3) — Заповнено (${mgrCount}/${mgrLimit})`
+                        : `Менеджер (Level 3)${mgrLimit > 0 ? ` (${mgrCount}/${mgrLimit})` : ' (Без ліміту)'}`}
+                    </option>
                   </select>
                 </div>
 
@@ -446,32 +583,18 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-mono text-gray-400 uppercase tracking-wide block mb-1">
-                  Код Кімнати:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={roomCodeInput}
-                  onChange={(e) => setRoomCodeInput(e.target.value)}
-                  placeholder="напр. bunker-4829"
-                  className="w-full px-4 py-3 bg-black/60 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:border-green-500 focus:outline-none font-mono tracking-wider"
-                />
-              </div>
-
               <button
                 type="submit"
                 className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.4)] text-sm sm:text-base flex items-center justify-center gap-2 pt-3"
               >
                 <Plug className="w-5 h-5" />
-                <span>Підключитись до Бункеру</span>
+                <span>Увійти в Бункер</span>
               </button>
             </form>
           )}
 
           {/* Quick Footer Links */}
-          <div className="pt-4 border-t border-gray-800 flex items-center justify-between text-[11px] font-mono text-gray-500">
+          <div className="pt-4 border-t border-gray-800 flex items-center justify-center text-[11px] font-mono text-gray-500">
             <button
               onClick={() => {
                 sessionStorage.clear();
@@ -482,13 +605,6 @@ export default function HomePage() {
             >
               <RotateCcw className="w-3 h-3" /> Очистити сесію вкладки
             </button>
-
-            <a
-              href="/admin"
-              className="text-red-400 hover:text-red-300 flex items-center gap-1 underline"
-            >
-              <KeyRound className="w-3 h-3" /> Вхід СЕО (/admin)
-            </a>
           </div>
 
           {errorMsg && (
@@ -505,7 +621,7 @@ export default function HomePage() {
   if (gameState.phase === 'INTRO_CINEMATIC') {
     return (
       <CinematicIntro
-        isHost={isHost}
+        isHost={false}
         onFinish={handleFinishIntro}
       />
     );
@@ -516,25 +632,8 @@ export default function HomePage() {
     return (
       <EndgameScreen
         isVictory={gameState.isVictory}
-        isHost={isHost}
+        isHost={false}
         onRestart={handleRestart}
-      />
-    );
-  }
-
-  // View: Host Command Center (Desktop)
-  if (isHost) {
-    return (
-      <HostDashboard
-        gameState={gameState}
-        onStartGame={handleStartGame}
-        onFinishIntro={handleFinishIntro}
-        onTriggerCrisis={handleTriggerCrisis}
-        onAdvanceToNegotiation={handleAdvanceToNegotiation}
-        onControlTimer={handleControlTimer}
-        onForceStartVoting={handleForceStartVoting}
-        onForceTallyVotes={handleForceTallyVotes}
-        onNextCrisis={handleNextCrisis}
       />
     );
   }

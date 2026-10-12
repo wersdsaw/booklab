@@ -2,16 +2,17 @@
 
 import React from 'react';
 import { Player, GamePhase, CascadeState } from '../lib/types';
-import { Crown, Shield, Users, Ghost, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { Crown, Shield, Users, Ghost, AlertTriangle, CheckCircle2, Clock, UserX } from 'lucide-react';
 
 interface NodeTreeProps {
   players: Record<string, Player>;
   phase: GamePhase;
   cascade: CascadeState | null;
   onSelectPlayer?: (player: Player) => void;
+  onKickPlayer?: (playerId: string) => void;
 }
 
-export default function NodeTree({ players, phase, cascade, onSelectPlayer }: NodeTreeProps) {
+export default function NodeTree({ players, phase, cascade, onSelectPlayer, onKickPlayer }: NodeTreeProps) {
   const allPlayers = Object.values(players);
 
   const heads = allPlayers.filter((p) => p.level === 'Керівник');
@@ -28,13 +29,16 @@ export default function NodeTree({ players, phase, cascade, onSelectPlayer }: No
 
     if (phase === 'CASCADE' && cascade) {
       if (cascade.currentStep === 'head' && p.level === 'Керівник') {
-        return !cascade.headDecision || cascade.headDecision.playerId !== p.id;
+        const group = cascade.consensusGroups?.['head'];
+        return group ? !group.votes[p.id] : !cascade.headDecision;
       }
       if (cascade.currentStep === 'teamLead' && p.level === 'Тімлід') {
-        return !cascade.teamLeadDecisions[p.id];
+        const group = cascade.consensusGroups?.['teamLead:' + p.department];
+        return group ? !group.votes[p.id] : !cascade.teamLeadDecisions[p.id];
       }
       if (cascade.currentStep === 'manager' && p.level === 'Менеджер') {
-        return !cascade.managerDecisions[p.id];
+        const group = cascade.consensusGroups?.['manager:' + p.department];
+        return group ? !group.votes[p.id] : !cascade.managerDecisions[p.id];
       }
     }
 
@@ -45,14 +49,29 @@ export default function NodeTree({ players, phase, cascade, onSelectPlayer }: No
     return false;
   };
 
+  const hasVotedInCascade = (p: Player): boolean => {
+    if (!cascade || phase !== 'CASCADE') return false;
+    if (cascade.currentStep === 'head' && p.level === 'Керівник') {
+      return !!cascade.consensusGroups?.['head']?.votes[p.id];
+    }
+    if (cascade.currentStep === 'teamLead' && p.level === 'Тімлід') {
+      return !!cascade.consensusGroups?.['teamLead:' + p.department]?.votes[p.id];
+    }
+    if (cascade.currentStep === 'manager' && p.level === 'Менеджер') {
+      return !!cascade.consensusGroups?.['manager:' + p.department]?.votes[p.id];
+    }
+    return false;
+  };
+
   const renderPlayerCard = (p: Player) => {
     const pending = isPending(p);
+    const votedInCascade = hasVotedInCascade(p);
 
     return (
       <div
         key={p.id}
         onClick={() => onSelectPlayer && onSelectPlayer(p)}
-        className={`p-3 rounded-lg border transition-all duration-300 cursor-pointer relative ${
+        className={`p-3 rounded-lg border transition-all duration-300 relative ${
           p.isEliminated
             ? 'bg-gray-900/40 border-gray-800 text-gray-500 opacity-60'
             : pending
@@ -61,7 +80,7 @@ export default function NodeTree({ players, phase, cascade, onSelectPlayer }: No
         }`}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span
               className={`w-2 h-2 rounded-full flex-shrink-0 ${
                 p.online ? 'bg-green-500' : 'bg-gray-600'
@@ -76,17 +95,41 @@ export default function NodeTree({ players, phase, cascade, onSelectPlayer }: No
             </span>
           </div>
 
-          {p.isEliminated && (
-            <span className="flex items-center gap-1 text-[10px] text-gray-400 font-mono bg-gray-800/80 px-1.5 py-0.5 rounded">
-              <Ghost className="w-3 h-3" /> Привид
-            </span>
-          )}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {p.isEliminated && (
+              <span className="flex items-center gap-1 text-[10px] text-gray-400 font-mono bg-gray-800/80 px-1.5 py-0.5 rounded">
+                <Ghost className="w-3 h-3" /> Привид
+              </span>
+            )}
 
-          {pending && !p.isEliminated && (
-            <span className="flex items-center gap-1 text-[10px] text-amber-400 font-mono bg-amber-950/80 border border-amber-500/40 px-1.5 py-0.5 rounded animate-pulse">
-              <Clock className="w-3 h-3" /> Очікує
-            </span>
-          )}
+            {votedInCascade && !p.isEliminated && (
+              <span className="flex items-center gap-0.5 text-[10px] text-green-400 font-mono bg-green-950/80 border border-green-500/40 px-1.5 py-0.5 rounded">
+                <CheckCircle2 className="w-3 h-3" /> Проголосував
+              </span>
+            )}
+
+            {pending && !p.isEliminated && (
+              <span className="flex items-center gap-1 text-[10px] text-amber-400 font-mono bg-amber-950/80 border border-amber-500/40 px-1.5 py-0.5 rounded animate-pulse">
+                <Clock className="w-3 h-3" /> Очікує
+              </span>
+            )}
+
+            {/* Host Kick Button */}
+            {onKickPlayer && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Ви впевнені, що хочете вигнати гравця "${p.name}" з бункеру?`)) {
+                    onKickPlayer(p.id);
+                  }
+                }}
+                title={`Вигнати гравця ${p.name}`}
+                className="p-1 rounded bg-red-950/70 hover:bg-red-800 text-red-400 hover:text-white border border-red-500/40 transition-colors"
+              >
+                <UserX className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-[11px] font-mono text-gray-400">

@@ -22,6 +22,11 @@ function getRoom(roomCode) {
       roomCode,
       phase: 'LOBBY',
       currentCrisisIndex: 0,
+      roleLimits: {
+        'Керівник': 2,
+        'Тімлід': 4,
+        'Менеджер': 0, // 0 = unlimited
+      },
       players: {}, // playerId -> Player
       cascade: null,
       timer: {
@@ -122,18 +127,468 @@ app.prepare().then(() => {
     });
   }
 
+  // ─── CONSENSUS ENGINE HELPERS ──────────────────────────────────────
+  function initConsensusStep(room, step) {
+    if (!room.cascade) return;
+    room.cascade.currentStep = step;
+
+    const activePlayers = Object.values(room.players).filter((p) => !p.isEliminated);
+
+    if (step === 'head') {
+      const activeHeads = activePlayers.filter((p) => p.level === 'Керівник');
+      if (activeHeads.length === 0) {
+        addLog(room, 'system', 'CASCADE STEP 1', 'Немає призначених Керівників. Автоматичний перехід до Тімлідів.');
+        initConsensusStep(room, 'teamLead');
+        return;
+      }
+      room.cascade.consensusGroups['head'] = {
+        groupId: 'head',
+        level: 'Керівник',
+        department: 'Всі',
+        displayName: 'Керівники (Heads)',
+        expectedVoterIds: activeHeads.map((h) => h.id),
+        votes: {},
+        isResolved: false,
+        winningOptionId: null,
+        winningText: null,
+        winningIsFlawed: false,
+        winningIsSabotage: false,
+        voteCounts: {},
+        hasTie: false,
+        tiedOptionIds: [],
+      };
+      addLog(room, 'system', 'CASCADE STEP 1', `Очікується консенсус Керівників (${activeHeads.length} гравців)...`);
+    } else if (step === 'teamLead') {
+      const activeTLs = activePlayers.filter((p) => p.level === 'Тімлід');
+      if (activeTLs.length === 0) {
+        addLog(room, 'system', 'CASCADE STEP 2', 'Немає призначених Тімлідів. Автоматичний перехід до Менеджерів.');
+        initConsensusStep(room, 'manager');
+        return;
+      }
+      const depts = Array.from(new Set(activeTLs.map((tl) => tl.department)));
+      depts.forEach((dept) => {
+        const deptTLs = activeTLs.filter((tl) => tl.department === dept);
+        const groupId = 'teamLead:' + dept;
+        room.cascade.consensusGroups[groupId] = {
+          groupId,
+          level: 'Тімлід',
+          department: dept,
+          displayName: `${dept} (Тімліди)`,
+          expectedVoterIds: deptTLs.map((tl) => tl.id),
+          votes: {},
+          isResolved: false,
+          winningOptionId: null,
+          winningText: null,
+          winningIsFlawed: false,
+          winningIsSabotage: false,
+          voteCounts: {},
+          hasTie: false,
+          tiedOptionIds: [],
+        };
+      });
+      addLog(room, 'system', 'CASCADE STEP 2', `Очікується консенсус Тімлідів по відділах (${depts.join(', ')})...`);
+    } else if (step === 'manager') {
+      const activeManagers = activePlayers.filter((p) => p.level === 'Менеджер');
+      if (activeManagers.length === 0) {
+        addLog(room, 'system', 'CASCADE STEP 3', 'Немає менеджерів. Каскад завершено.');
+        room.cascade.currentStep = 'completed';
+        return;
+      }
+      const depts = Array.from(new Set(activeManagers.map((m) => m.department)));
+      depts.forEach((dept) => {
+        const deptManagers = activeManagers.filter((m) => m.department === dept);
+        const groupId = 'manager:' + dept;
+        room.cascade.consensusGroups[groupId] = {
+          groupId,
+          level: 'Менеджер',
+          department: dept,
+          displayName: `${dept} (Менеджери)`,
+          expectedVoterIds: deptManagers.map((m) => m.id),
+          votes: {},
+          isResolved: false,
+          winningOptionId: null,
+          winningText: null,
+          winningIsFlawed: false,
+          winningIsSabotage: false,
+          voteCounts: {},
+          hasTie: false,
+          tiedOptionIds: [],
+        };
+      });
+      addLog(room, 'system', 'CASCADE STEP 3', `Директива дійшла до передової. Очікується консенсус Менеджерів по відділах (${depts.join(', ')})...`);
+    }
+  }
+
+  function resolveGroupWithOption(room, group, winningOptionId) {
+    group.isResolved = true;
+    group.hasTie = false;
+    group.winningOptionId = winningOptionId;
+
+    const winningVote = Object.values(group.votes).find((v) => v.optionId === winningOptionId);
+    let winningText = winningVote ? winningVote.text : '';
+    let isFlawed = winningVote ? winningVote.isFlawed : false;
+    let isSabotage = winningVote ? winningVote.isSabotage : false;
+
+    if (!winningText) {
+      const crisis = CRISES_DATA[room.currentCrisisIndex] || CRISES_DATA[0];
+      const stepOptions =
+        group.level === 'Керівник'
+          ? crisis.steps.head.options
+          : group.level === 'Тімлід'
+          ? crisis.steps.teamLead.options
+          : crisis.steps.manager.options;
+      const opt = stepOptions.find((o) => o.id === winningOptionId);
+      if (opt) {
+        winningText = opt.text;
+        isFlawed = opt.type === 'flawed' || opt.type === 'sabotage';
+        isSabotage = !!opt.isSabotage;
+      }
+    }
+
+    group.winningText = winningText;
+    group.winningIsFlawed = isFlawed;
+    group.winningIsSabotage = isSabotage;
+
+    const voteCount = group.voteCounts[winningOptionId] || 1;
+    addLog(
+      room,
+      isSabotage ? 'sabotage' : isFlawed ? 'sabotage' : 'cascade',
+      group.displayName,
+      `Рішення прийнято більшістю (${voteCount}/${group.expectedVoterIds.length} голосів): "${winningText}"`,
+      { isFlawed, isSabotage }
+    );
+
+    if (group.level === 'Керівник') {
+      room.cascade.headDecision = {
+        playerId: winningVote?.playerId || 'consensus',
+        playerName: group.displayName,
+        optionId: winningOptionId,
+        text: winningText,
+        isFlawed,
+      };
+    } else if (group.level === 'Тімлід') {
+      room.cascade.teamLeadDecisions[group.department] = {
+        playerId: winningVote?.playerId || 'consensus',
+        playerName: group.displayName,
+        optionId: winningOptionId,
+        text: winningText,
+        isFlawed,
+        department: group.department,
+      };
+    } else if (group.level === 'Менеджер') {
+      room.cascade.managerDecisions[group.department] = {
+        playerId: winningVote?.playerId || 'consensus',
+        playerName: group.displayName,
+        optionId: winningOptionId,
+        text: winningText,
+        isFlawed,
+        department: group.department,
+      };
+
+      if (isSabotage) {
+        room.cascade.mutinyProposal = {
+          initiatorName: winningVote?.playerName || 'Менеджер',
+          initiatorId: winningVote?.playerId || 'consensus',
+          department: group.department,
+          accepted: [winningVote?.playerId || 'consensus'],
+          rejected: [],
+        };
+        addLog(
+          room,
+          'sabotage',
+          `⚠ БУНТ У ВІДДІЛІ ${group.department}`,
+          `Більшість менеджерів проголосувала за саботаж: "${winningText}"!`
+        );
+      }
+    }
+
+    checkAndAdvanceCascadeStep(room);
+  }
+
+  function checkAndAdvanceCascadeStep(room) {
+    if (!room.cascade) return;
+    const currentStep = room.cascade.currentStep;
+
+    const currentStepGroups = Object.values(room.cascade.consensusGroups).filter((g) => {
+      if (currentStep === 'head') return g.level === 'Керівник';
+      if (currentStep === 'teamLead') return g.level === 'Тімлід';
+      if (currentStep === 'manager') return g.level === 'Менеджер';
+      return false;
+    });
+
+    const allResolved = currentStepGroups.length > 0 && currentStepGroups.every((g) => g.isResolved);
+
+    if (allResolved) {
+      if (currentStep === 'head') {
+        initConsensusStep(room, 'teamLead');
+      } else if (currentStep === 'teamLead') {
+        initConsensusStep(room, 'manager');
+      } else if (currentStep === 'manager') {
+        room.cascade.currentStep = 'completed';
+        addLog(
+          room,
+          'system',
+          'CASCADE ЗАВЕРШЕНО',
+          'Всі відділи ухвалили рішення! Ведучий може переходити до таймеру обговорення.'
+        );
+      }
+    }
+  }
+
+  function processConsensusVote(room, player, optionId, text, isFlawed, isSabotage) {
+    if (!room.cascade) return;
+
+    let groupId;
+    if (player.level === 'Керівник') {
+      groupId = 'head';
+    } else if (player.level === 'Тімлід') {
+      groupId = 'teamLead:' + player.department;
+    } else {
+      groupId = 'manager:' + player.department;
+    }
+
+    let group = room.cascade.consensusGroups[groupId];
+    if (!group) {
+      group = {
+        groupId,
+        level: player.level,
+        department: player.department,
+        displayName: `${player.department} (${player.level})`,
+        expectedVoterIds: [player.id],
+        votes: {},
+        isResolved: false,
+        winningOptionId: null,
+        winningText: null,
+        winningIsFlawed: false,
+        winningIsSabotage: false,
+        voteCounts: {},
+        hasTie: false,
+        tiedOptionIds: [],
+      };
+      room.cascade.consensusGroups[groupId] = group;
+    }
+
+    if (group.isResolved) return;
+
+    group.votes[player.id] = {
+      playerId: player.id,
+      playerName: player.name,
+      department: player.department,
+      level: player.level,
+      optionId,
+      text,
+      isFlawed: !!isFlawed,
+      isSabotage: !!isSabotage,
+      timestamp: timestamp(),
+    };
+
+    group.voteCounts[optionId] = (group.voteCounts[optionId] || 0) + 1;
+
+    // Secret vs public logging:
+    // If 1 Flawed Manager votes "Sabotage", record sabotage attempt in Host's logs
+    if (isSabotage) {
+      addLog(
+        room,
+        'sabotage',
+        `⚠ СПРОБА САБОТАЖУ: ${player.name} (${player.department})`,
+        `Проголосував за саботаж: "${text}"`,
+        { isFlawed: true, isSabotage: true }
+      );
+    } else if (isFlawed) {
+      addLog(
+        room,
+        'sabotage',
+        `⚠ ТОКСИЧНИЙ ГОЛОС: ${player.name} (${player.level} · ${player.department})`,
+        `Проголосував за деструктивний варіант: "${text}"`,
+        { isFlawed: true }
+      );
+    } else {
+      addLog(
+        room,
+        'cascade',
+        `${player.name} (${player.level} · ${player.department})`,
+        `Віддав голос: "${text}"`
+      );
+    }
+
+    const submittedCount = Object.keys(group.votes).length;
+    const expectedCount = group.expectedVoterIds.length;
+    const allVoted = group.expectedVoterIds.every((id) => group.votes[id]);
+
+    if (allVoted || submittedCount >= expectedCount) {
+      const counts = group.voteCounts;
+      let maxCount = -1;
+      Object.values(counts).forEach((c) => {
+        if (c > maxCount) maxCount = c;
+      });
+
+      const topOptions = Object.keys(counts).filter((optId) => counts[optId] === maxCount);
+
+      if (topOptions.length === 1) {
+        resolveGroupWithOption(room, group, topOptions[0]);
+      } else {
+        group.hasTie = true;
+        group.tiedOptionIds = topOptions;
+        addLog(
+          room,
+          'cascade',
+          `⚖ НІЧИЯ В ГРУПІ: ${group.displayName}`,
+          `Голоси розділилися порівну (${maxCount} голосів на кожен варіант). Очікується вирішальний голос ведучого!`
+        );
+      }
+    }
+  }
+
   // ─── SOCKET.IO CONNECTIONS ────────────────────────────────────────
   io.on('connection', (socket) => {
     let currentRoomCode = null;
     let currentPlayerId = null;
 
+    // 0. Step 1 Room Connect Check
+    socket.on('check_room', ({ roomCode }) => {
+      const cleanCode = (roomCode || '').trim().toLowerCase();
+      const room = rooms[cleanCode];
+      if (!room) {
+        socket.emit('room_check_result', {
+          exists: false,
+          error: `Кімнату з кодом "${cleanCode}" не знайдено. Перевірте правильність введеного коду.`,
+        });
+        return;
+      }
+
+      const counts = { 'Керівник': 0, 'Тімлід': 0, 'Менеджер': 0 };
+      Object.values(room.players).forEach((p) => {
+        if (!p.isEliminated && counts[p.level] !== undefined) {
+          counts[p.level]++;
+        }
+      });
+
+      socket.emit('room_check_result', {
+        exists: true,
+        roomCode: cleanCode,
+        roleLimits: room.roleLimits,
+        roleCounts: counts,
+        phase: room.phase,
+      });
+    });
+
+    // 0.1 Update Role Limits (Host only)
+    socket.on('update_role_limits', ({ roomCode, roleLimits }) => {
+      const room = getRoom(roomCode);
+      if (room && roleLimits) {
+        room.roleLimits = {
+          ...room.roleLimits,
+          ...roleLimits,
+        };
+        addLog(room, 'system', 'HOST', 'Оновлено ліміти ролей для кімнати.');
+        io.to(roomCode).emit('state_update', sanitizeState(room));
+      }
+    });
+
+    // 0.2 Host Kick Player Functionality
+    socket.on('kick_player', ({ roomCode, playerId }) => {
+      const room = rooms[roomCode];
+      if (!room || !room.players[playerId]) return;
+
+      const player = room.players[playerId];
+      const pName = player.name;
+      const pSocketId = player.socketId;
+
+      // 1. Notify player and instantly sever WebSocket connection
+      if (pSocketId) {
+        io.to(pSocketId).emit('kicked_from_room', {
+          reason: 'Вас було видалено з гри адміністратором бункеру.',
+        });
+        const targetSock = io.sockets.sockets.get(pSocketId);
+        if (targetSock) {
+          targetSock.disconnect(true);
+        }
+      }
+
+      // 2. Remove player from room state
+      delete room.players[playerId];
+      addLog(
+        room,
+        'system',
+        'ADMIN',
+        `Гравця ${pName} (${player.level} · ${player.department}) вигнано з бункеру адміністратором.`
+      );
+
+      // 3. Adjust consensus if in CASCADE phase
+      if (room.cascade && room.cascade.consensusGroups) {
+        Object.values(room.cascade.consensusGroups).forEach((group) => {
+          if (group.expectedVoterIds.includes(playerId)) {
+            group.expectedVoterIds = group.expectedVoterIds.filter((id) => id !== playerId);
+            if (group.votes[playerId]) {
+              const optId = group.votes[playerId].optionId;
+              delete group.votes[playerId];
+              if (group.voteCounts[optId]) {
+                group.voteCounts[optId]--;
+                if (group.voteCounts[optId] <= 0) delete group.voteCounts[optId];
+              }
+            }
+
+            if (!group.isResolved && group.expectedVoterIds.length > 0) {
+              const allVoted = group.expectedVoterIds.every((id) => group.votes[id]);
+              if (allVoted) {
+                const counts = group.voteCounts;
+                let maxCount = -1;
+                Object.values(counts).forEach((c) => {
+                  if (c > maxCount) maxCount = c;
+                });
+                const topOptions = Object.keys(counts).filter((optId) => counts[optId] === maxCount);
+                if (topOptions.length === 1) {
+                  resolveGroupWithOption(room, group, topOptions[0]);
+                } else if (topOptions.length > 1) {
+                  group.hasTie = true;
+                  group.tiedOptionIds = topOptions;
+                }
+              }
+            } else if (!group.isResolved && group.expectedVoterIds.length === 0) {
+              group.isResolved = true;
+              checkAndAdvanceCascadeStep(room);
+            }
+          }
+        });
+      }
+
+      // 4. Broadcast updated state
+      io.to(roomCode).emit('state_update', sanitizeState(room));
+    });
+
+    // 0.3 Host Tiebreaker Resolution
+    socket.on('resolve_tiebreaker', ({ roomCode, groupId, winningOptionId, isRandom }) => {
+      const room = getRoom(roomCode);
+      if (!room.cascade || !room.cascade.consensusGroups) return;
+      const group = room.cascade.consensusGroups[groupId];
+      if (!group || !group.hasTie) return;
+
+      let chosenOptionId = winningOptionId;
+      if (isRandom && group.tiedOptionIds && group.tiedOptionIds.length > 0) {
+        const randomIndex = Math.floor(Math.random() * group.tiedOptionIds.length);
+        chosenOptionId = group.tiedOptionIds[randomIndex];
+        addLog(room, 'system', 'ВИПАДКОВИЙ ВИБІР', `Ведучий обрав випадкове вирішення нічиєї для ${group.displayName}.`);
+      } else {
+        addLog(room, 'system', 'РІШЕННЯ ВЕДУЧОГО', `Ведучий вручну вирішив нічию для ${group.displayName}.`);
+      }
+
+      resolveGroupWithOption(room, group, chosenOptionId);
+      io.to(roomCode).emit('state_update', sanitizeState(room));
+    });
+
     // 1. Join / Reconnect to Room
-    socket.on('join_room', ({ roomCode, player, isHost }) => {
+    socket.on('join_room', ({ roomCode, player, isHost, roleLimits }) => {
       currentRoomCode = roomCode;
       socket.join(roomCode);
       const room = getRoom(roomCode);
 
       if (isHost) {
+        if (roleLimits) {
+          room.roleLimits = {
+            ...room.roleLimits,
+            ...roleLimits,
+          };
+        }
         addLog(room, 'system', 'HOST', 'Ведучий підключився до панелі управління.');
         socket.emit('state_update', sanitizeState(room));
         return;
@@ -147,6 +602,18 @@ app.prepare().then(() => {
           room.players[player.id].socketId = socket.id;
           addLog(room, 'system', room.players[player.id].name, 'Перепідключився до бункеру.');
         } else {
+          // Check role limits before creating new player
+          const limit = room.roleLimits ? room.roleLimits[player.level] : 0;
+          if (limit > 0) {
+            const currentCount = Object.values(room.players).filter(
+              (p) => !p.isEliminated && p.level === player.level
+            ).length;
+            if (currentCount >= limit) {
+              socket.emit('error_message', `Ліміт на роль "${player.level}" вичерпано (${limit}/${limit}). Оберіть іншу роль.`);
+              return;
+            }
+          }
+
           // New player join
           room.players[player.id] = {
             ...player,
@@ -266,127 +733,50 @@ app.prepare().then(() => {
         teamLeadDecisions: {},
         managerDecisions: {},
         mutinyProposal: null,
+        consensusGroups: {},
       };
 
       addLog(room, 'crisis', 'CEO / РАДА ДИРЕКТОРІВ', `АКТИВОВАНО КРИЗУ ${crisis.id}: ${crisis.title}`);
       addLog(room, 'crisis', 'АМБІГУАЛЬНИЙ БРИФІНГ', crisis.ambiguousPrompt);
-      addLog(room, 'system', 'CASCADE STEP 1', 'Запит відправлено Керівникам (Heads)...');
+
+      initConsensusStep(room, 'head');
 
       io.to(roomCode).emit('state_update', sanitizeState(room));
     });
 
-    // 6. Cascade Step: Head Decision
+    // 6. Cascade Step: Head Decision (via Consensus Engine)
     socket.on('submit_head_decision', ({ roomCode, playerId, optionId, text, isFlawed }) => {
       const room = getRoom(roomCode);
       if (!room.cascade) return;
 
       const player = room.players[playerId];
-      const pName = player ? player.name : 'Керівник';
+      if (!player) return;
 
-      room.cascade.headDecision = {
-        playerId,
-        playerName: pName,
-        optionId,
-        text,
-        isFlawed: !!isFlawed,
-      };
-
-      room.cascade.currentStep = 'teamLead';
-
-      const logType = isFlawed ? 'sabotage' : 'cascade';
-      addLog(
-        room,
-        logType,
-        `${pName} (Керівник)`,
-        `Рішення: "${text}"`,
-        { isFlawed }
-      );
-      addLog(room, 'system', 'CASCADE STEP 2', 'Директива спускається до Тімлідів (Team Leads)...');
-
+      processConsensusVote(room, player, optionId, text, isFlawed, false);
       io.to(roomCode).emit('state_update', sanitizeState(room));
     });
 
-    // 7. Cascade Step: Team Lead Decision
+    // 7. Cascade Step: Team Lead Decision (via Consensus Engine)
     socket.on('submit_teamlead_decision', ({ roomCode, playerId, optionId, text, isFlawed }) => {
       const room = getRoom(roomCode);
       if (!room.cascade) return;
 
       const player = room.players[playerId];
-      const pName = player ? player.name : 'Тімлід';
+      if (!player) return;
 
-      room.cascade.teamLeadDecisions[playerId] = {
-        playerId,
-        playerName: pName,
-        optionId,
-        text,
-        isFlawed: !!isFlawed,
-      };
-
-      const logType = isFlawed ? 'sabotage' : 'cascade';
-      addLog(
-        room,
-        logType,
-        `${pName} (Тімлід · ${player?.department})`,
-        `Трансляція команді: "${text}"`,
-        { isFlawed }
-      );
-
-      // Check if all team leads (or at least 1) answered to move to managers
-      const activeTLs = Object.values(room.players).filter(
-        (p) => p.level === 'Тімлід' && !p.isEliminated
-      );
-      const allTLAnswered = activeTLs.every((tl) => room.cascade.teamLeadDecisions[tl.id]);
-
-      if (allTLAnswered || activeTLs.length === 0) {
-        room.cascade.currentStep = 'manager';
-        addLog(room, 'system', 'CASCADE STEP 3', 'Директива спускається до Менеджерів (Managers)...');
-      }
-
+      processConsensusVote(room, player, optionId, text, isFlawed, false);
       io.to(roomCode).emit('state_update', sanitizeState(room));
     });
 
-    // 8. Cascade Step: Manager Decision
+    // 8. Cascade Step: Manager Decision (via Consensus Engine)
     socket.on('submit_manager_decision', ({ roomCode, playerId, optionId, text, isFlawed, isSabotage }) => {
       const room = getRoom(roomCode);
       if (!room.cascade) return;
 
       const player = room.players[playerId];
-      const pName = player ? player.name : 'Менеджер';
+      if (!player) return;
 
-      room.cascade.managerDecisions[playerId] = {
-        playerId,
-        playerName: pName,
-        optionId,
-        text,
-        isFlawed: !!isFlawed,
-      };
-
-      if (isSabotage) {
-        // Trigger mutiny modal for peers in the same department
-        room.cascade.mutinyProposal = {
-          initiatorName: pName,
-          initiatorId: playerId,
-          department: player.department,
-          accepted: [playerId],
-          rejected: [],
-        };
-        addLog(
-          room,
-          'sabotage',
-          `⚠ САБОТАЖ: ${pName} (${player.department})`,
-          `Ініціював таємний бунт у відділі: "${text}"!`
-        );
-      } else {
-        const logType = isFlawed ? 'sabotage' : 'cascade';
-        addLog(
-          room,
-          logType,
-          `${pName} (Менеджер · ${player?.department})`,
-          `Дія: "${text}"`,
-          { isFlawed }
-        );
-      }
-
+      processConsensusVote(room, player, optionId, text, isFlawed, isSabotage);
       io.to(roomCode).emit('state_update', sanitizeState(room));
     });
 

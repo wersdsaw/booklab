@@ -82,6 +82,41 @@ export interface Crisis {
   };
 }
 
+export interface RoleLimits {
+  'Керівник': number; // e.g. 2
+  'Тімлід': number;   // e.g. 4
+  'Менеджер': number; // 0 = unlimited
+}
+
+export interface ConsensusVote {
+  playerId: string;
+  playerName: string;
+  department: Department;
+  level: HierarchyLevel;
+  optionId: string;
+  text: string;
+  isFlawed: boolean;
+  isSabotage?: boolean;
+  timestamp: string;
+}
+
+export interface ConsensusGroup {
+  groupId: string;                  // e.g. "head" or "teamLead:Форвард" or "manager:Форвард"
+  level: HierarchyLevel;            // 'Керівник' | 'Тімлід' | 'Менеджер'
+  department: Department | 'Всі';   // Department or 'Всі' for Head tier
+  displayName: string;              // e.g. "Керівники", "Форвард (Тімліди)", "Форвард (Менеджери)"
+  expectedVoterIds: string[];       // IDs of active players expected to vote
+  votes: Record<string, ConsensusVote>; // playerId -> ConsensusVote
+  isResolved: boolean;              // true once consensus is resolved
+  winningOptionId: string | null;
+  winningText: string | null;
+  winningIsFlawed: boolean;
+  winningIsSabotage?: boolean;
+  voteCounts: Record<string, number>; // optionId -> count
+  hasTie: boolean;
+  tiedOptionIds: string[];
+}
+
 export interface CascadeState {
   crisisId: number;
   currentStep: 'head' | 'teamLead' | 'manager' | 'completed';
@@ -98,6 +133,7 @@ export interface CascadeState {
     optionId: string;
     text: string;
     isFlawed: boolean;
+    department?: Department;
   }>;
   managerDecisions: Record<string, {
     playerId: string;
@@ -105,6 +141,7 @@ export interface CascadeState {
     optionId: string;
     text: string;
     isFlawed: boolean;
+    department?: Department;
   }>;
   mutinyProposal: {
     initiatorName: string;
@@ -113,6 +150,7 @@ export interface CascadeState {
     accepted: string[];
     rejected: string[];
   } | null;
+  consensusGroups: Record<string, ConsensusGroup>;
 }
 
 export interface VotingRecord {
@@ -138,6 +176,7 @@ export interface GameState {
   roomCode: string;
   phase: GamePhase;
   currentCrisisIndex: number; // 0 to 4
+  roleLimits: RoleLimits;
   players: Record<string, Player>;
   cascade: CascadeState | null;
   timer: {

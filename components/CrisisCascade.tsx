@@ -26,17 +26,33 @@ export default function CrisisCascade({
   const [customText, setCustomText] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  // Consensus group for this player
+  const myGroupId =
+    player.level === 'Керівник'
+      ? 'head'
+      : player.level === 'Тімлід'
+      ? 'teamLead:' + player.department
+      : 'manager:' + player.department;
+
+  const myGroup = cascade.consensusGroups?.[myGroupId];
+
   // Check if player has already made a decision in this crisis
   const hasPlayerDecided = (): boolean => {
     if (submitted) return true;
+    if (myGroup && myGroup.votes && myGroup.votes[player.id]) {
+      return true;
+    }
+    if (myGroup && myGroup.isResolved) {
+      return true;
+    }
     if (player.level === 'Керівник') {
       return cascade.headDecision?.playerId === player.id;
     }
     if (player.level === 'Тімлід') {
-      return !!cascade.teamLeadDecisions[player.id];
+      return !!cascade.teamLeadDecisions[player.department] || !!cascade.teamLeadDecisions[player.id];
     }
     if (player.level === 'Менеджер') {
-      return !!cascade.managerDecisions[player.id];
+      return !!cascade.managerDecisions[player.department] || !!cascade.managerDecisions[player.id];
     }
     return false;
   };
@@ -143,16 +159,41 @@ export default function CrisisCascade({
           </span>
         </div>
 
-        {/* State 1: Already decided */}
+        {/* State 1: Already voted in this step */}
         {alreadyDecided && (
-          <div className="p-4 rounded-lg bg-green-950/30 border border-green-500/40 text-center space-y-2">
-            <CheckCircle className="w-8 h-8 text-green-400 mx-auto" />
-            <p className="text-xs font-bold uppercase tracking-wider text-green-400">
-              Ваше рішення зафіксовано в системі!
-            </p>
-            <p className="text-[11px] text-gray-400 font-mono">
-              Очікуйте дій інших співробітників та початку фази обговорення...
-            </p>
+          <div className="space-y-3">
+            {myGroup && !myGroup.isResolved ? (
+              <div className="p-5 rounded-lg bg-amber-950/20 border border-amber-500/40 text-center space-y-2">
+                <Clock className="w-8 h-8 text-amber-400 mx-auto animate-pulse" />
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                  Очікування рішень інших колег...
+                </p>
+                <p className="text-xs text-gray-300 font-mono">
+                  {myGroup.displayName}:{" "}
+                  <strong className="text-amber-400">
+                    {Object.keys(myGroup.votes || {}).length} / {myGroup.expectedVoterIds.length} проголосували
+                  </strong>
+                </p>
+                <p className="text-[11px] text-gray-500 font-sans">
+                  Рішення буде затверджено більшістю голосів групи.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg bg-green-950/30 border border-green-500/40 text-center space-y-2">
+                <CheckCircle className="w-8 h-8 text-green-400 mx-auto" />
+                <p className="text-xs font-bold uppercase tracking-wider text-green-400">
+                  Ваше рішення зафіксовано в системі!
+                </p>
+                {myGroup?.winningText && (
+                  <p className="text-xs text-gray-200 font-sans italic border-t border-green-900/40 pt-2">
+                    Затверджене рішення групи: "{myGroup.winningText}"
+                  </p>
+                )}
+                <p className="text-[11px] text-gray-400 font-mono">
+                  Очікуйте дій інших співробітників та початку фази обговорення...
+                </p>
+              </div>
+            )}
           </div>
         )}
 

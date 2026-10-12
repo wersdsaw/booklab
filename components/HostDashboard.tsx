@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GameState, Player, AuditLogEntry } from '../lib/types';
+import { GameState, Player, AuditLogEntry, RoleLimits } from '../lib/types';
 import { CRISES_DATA } from '../lib/crises';
 import NodeTree from './NodeTree';
 import {
@@ -20,6 +20,10 @@ import {
   Radio,
   Eye,
   Award,
+  Settings,
+  Scale,
+  Dices,
+  CheckCircle,
 } from 'lucide-react';
 
 interface HostDashboardProps {
@@ -32,6 +36,9 @@ interface HostDashboardProps {
   onForceStartVoting: () => void;
   onForceTallyVotes: () => void;
   onNextCrisis: () => void;
+  onKickPlayer?: (playerId: string) => void;
+  onResolveTiebreaker?: (groupId: string, winningOptionId: string, isRandom?: boolean) => void;
+  onUpdateRoleLimits?: (roleLimits: RoleLimits) => void;
 }
 
 export default function HostDashboard({
@@ -44,10 +51,17 @@ export default function HostDashboard({
   onForceStartVoting,
   onForceTallyVotes,
   onNextCrisis,
+  onKickPlayer,
+  onResolveTiebreaker,
+  onUpdateRoleLimits,
 }: HostDashboardProps) {
   const [activeTab, setActiveTab] = useState<'tree' | 'crises' | 'votes'>('tree');
   const [logFilter, setLogFilter] = useState<'all' | 'sabotage' | 'votes' | 'ghost'>('all');
   const [copied, setCopied] = useState(false);
+  const [showRoleSettings, setShowRoleSettings] = useState(false);
+  const [roleLimitsInput, setRoleLimitsInput] = useState<RoleLimits>(
+    gameState.roleLimits || { 'Керівник': 2, 'Тімлід': 4, 'Менеджер': 0 }
+  );
   const logTerminalRef = useRef<HTMLDivElement>(null);
 
   const players = Object.values(gameState.players);
@@ -138,13 +152,24 @@ export default function HostDashboard({
         {/* Quick Phase Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {gameState.phase === 'LOBBY' && (
-            <button
-              onClick={onStartGame}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span>Запустити гру (Start Simulation)</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={onStartGame}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>Запустити гру (Start Simulation)</span>
+              </button>
+              {onUpdateRoleLimits && (
+                <button
+                  onClick={() => setShowRoleSettings(!showRoleSettings)}
+                  className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 border border-gray-700"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>Ліміти ролей</span>
+                </button>
+              )}
+            </div>
           )}
 
           {gameState.phase === 'INTRO_CINEMATIC' && (
@@ -228,6 +253,65 @@ export default function HostDashboard({
         </div>
       </div>
 
+      {/* Role Limits Configuration Panel (Lobby) */}
+      {showRoleSettings && gameState.phase === 'LOBBY' && (
+        <div className="bg-gray-900/90 border-b border-gray-800 p-4 px-6 flex items-center justify-between gap-4 flex-wrap text-xs font-mono">
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="font-bold text-gray-300 uppercase">Ліміти ролей у кімнаті:</span>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400">Керівники (Max):</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={roleLimitsInput['Керівник']}
+                onChange={(e) =>
+                  setRoleLimitsInput({ ...roleLimitsInput, 'Керівник': parseInt(e.target.value) || 0 })
+                }
+                className="w-16 px-2 py-1 bg-black/60 border border-gray-700 rounded text-center text-white"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400">Тімліди (Max):</label>
+              <input
+                type="number"
+                min="1"
+                max="15"
+                value={roleLimitsInput['Тімлід']}
+                onChange={(e) =>
+                  setRoleLimitsInput({ ...roleLimitsInput, 'Тімлід': parseInt(e.target.value) || 0 })
+                }
+                className="w-16 px-2 py-1 bg-black/60 border border-gray-700 rounded text-center text-white"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-gray-400">Менеджери (0 = Unlimited):</label>
+              <input
+                type="number"
+                min="0"
+                max="50"
+                value={roleLimitsInput['Менеджер']}
+                onChange={(e) =>
+                  setRoleLimitsInput({ ...roleLimitsInput, 'Менеджер': parseInt(e.target.value) || 0 })
+                }
+                className="w-16 px-2 py-1 bg-black/60 border border-gray-700 rounded text-center text-white"
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (onUpdateRoleLimits) {
+                onUpdateRoleLimits(roleLimitsInput);
+                setShowRoleSettings(false);
+              }
+            }}
+            className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded font-bold uppercase transition-colors"
+          >
+            Зберегти ліміти
+          </button>
+        </div>
+      )}
+
       {/* ─── MAIN 2-COLUMN WORKSPACE ─────────────────────────────── */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 overflow-hidden">
         {/* Left Column: Interactive Visuals & Controls (2 cols) */}
@@ -263,6 +347,117 @@ export default function HostDashboard({
             </button>
           </div>
 
+          {/* Consensus Engine Live Progress Box during CASCADE */}
+          {gameState.phase === 'CASCADE' && gameState.cascade?.consensusGroups && (
+            <div className="glass-card p-5 space-y-4 border-l-4 border-amber-500">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-amber-400 animate-pulse" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-amber-400">
+                    Консенсус-Рушій: Перебіг Голосування за Директиви
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-gray-400 bg-gray-900 px-2.5 py-1 rounded border border-gray-800">
+                  Поточний крок: <strong className="text-amber-400 uppercase">{gameState.cascade.currentStep}</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {Object.values(gameState.cascade.consensusGroups).map((grp) => {
+                  const votedCount = Object.keys(grp.votes || {}).length;
+                  const totalExpected = grp.expectedVoterIds.length;
+                  const pendingPlayers = grp.expectedVoterIds
+                    .filter((pid) => !grp.votes?.[pid])
+                    .map((pid) => gameState.players[pid]?.name || 'Невідомий');
+
+                  return (
+                    <div
+                      key={grp.groupId}
+                      className={`p-3.5 rounded-lg border text-xs space-y-2 transition-all ${
+                        grp.hasTie
+                          ? 'bg-purple-950/30 border-purple-500/70'
+                          : grp.isResolved
+                          ? 'bg-green-950/20 border-green-500/40'
+                          : 'bg-black/50 border-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-mono">
+                        <span className="font-bold text-gray-200">{grp.displayName}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            grp.isResolved
+                              ? 'bg-green-950 text-green-400 border border-green-500/40'
+                              : 'bg-amber-950 text-amber-400 border border-amber-500/40 animate-pulse'
+                          }`}
+                        >
+                          {votedCount}/{totalExpected} проголосували
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            grp.isResolved ? 'bg-green-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${totalExpected > 0 ? (votedCount / totalExpected) * 100 : 100}%` }}
+                        />
+                      </div>
+
+                      {/* Pending players list */}
+                      {!grp.isResolved && pendingPlayers.length > 0 && (
+                        <p className="text-[11px] font-mono text-amber-400/80">
+                          ⏳ Очікує: {pendingPlayers.join(', ')}
+                        </p>
+                      )}
+
+                      {/* Resolved decision preview */}
+                      {grp.isResolved && grp.winningText && (
+                        <p className="text-[11px] text-gray-300 font-sans italic border-t border-gray-800/80 pt-1.5">
+                          ✓ Рішення: "{grp.winningText}"
+                        </p>
+                      )}
+
+                      {/* TIEBREAKER RESOLUTION UI FOR HOST */}
+                      {grp.hasTie && onResolveTiebreaker && (
+                        <div className="mt-2 pt-2 border-t border-purple-500/40 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-purple-300 font-bold uppercase">
+                            <span>⚖ Нічия! Оберіть рішення або випадковий вибір:</span>
+                            <button
+                              onClick={() => onResolveTiebreaker(grp.groupId, '', true)}
+                              className="px-2 py-1 bg-purple-700 hover:bg-purple-600 text-white rounded text-[10px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <Dices className="w-3 h-3" />
+                              <span>Випадковий вибір</span>
+                            </button>
+                          </div>
+                          <div className="space-y-1.5">
+                            {grp.tiedOptionIds.map((optId) => {
+                              const voteEntry = Object.values(grp.votes).find((v) => v.optionId === optId);
+                              const optText = voteEntry?.text || optId;
+                              return (
+                                <button
+                                  key={optId}
+                                  onClick={() => onResolveTiebreaker(grp.groupId, optId, false)}
+                                  className="w-full p-2 bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 rounded text-left text-purple-200 text-xs font-semibold flex items-center justify-between gap-2 transition-colors"
+                                >
+                                  <span className="truncate">"{optText}"</span>
+                                  <span className="flex-shrink-0 text-[10px] bg-purple-800/80 px-1.5 py-0.5 rounded text-white font-mono">
+                                    Обрати
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: Live Node Tree */}
           {activeTab === 'tree' && (
             <div className="glass-card p-5 space-y-4">
@@ -278,6 +473,7 @@ export default function HostDashboard({
                 players={gameState.players}
                 phase={gameState.phase}
                 cascade={gameState.cascade}
+                onKickPlayer={onKickPlayer}
               />
             </div>
           )}
