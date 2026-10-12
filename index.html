@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Корпоративний Бункер</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- PeerJS for P2P connections -->
+  <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="min-h-screen bg-[#0a0510] text-gray-100 font-sans overflow-x-hidden">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCREEN 1 — LOGIN / ONBOARDING / LOBBY
+       The entry point for both Host and Player.
+       Uses tab toggle to switch between Host and Player modes.
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="screen-login" class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-lg p-6 sm:p-8 text-center space-y-6 sm:space-y-8">
+
+      <!-- ── Title & Branding ── -->
+      <div>
+        <i class="fa-solid fa-skull text-red-500 text-5xl sm:text-6xl pulse-icon mb-4 block"></i>
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-widest text-red-500 neon-text">
+          Корпоративний Бункер
+        </h1>
+        <p class="mt-2 text-xs sm:text-sm text-gray-400 tracking-wide uppercase">Corporate Survival Simulation</p>
+      </div>
+
+      <!-- ── Mode Tabs: Host vs Player ── -->
+      <div class="flex border border-gray-700 rounded-lg overflow-hidden">
+        <button id="tab-host" onclick="switchTab('host')"
+          class="flex-1 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors tab-active">
+          <i class="fa-solid fa-tower-broadcast mr-1"></i> Я Ведучий
+        </button>
+        <button id="tab-player" onclick="switchTab('player')"
+          class="flex-1 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors tab-inactive">
+          <i class="fa-solid fa-user-secret mr-1"></i> Я Гравець
+        </button>
+      </div>
+
+      <!-- ── Host Mode Panel ── -->
+      <div id="panel-host" class="space-y-4">
+        <p class="text-sm text-gray-400">Натисніть щоб створити нову ігрову кімнату.</p>
+        <button onclick="createRoom()"
+          class="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-red-500/30 text-base sm:text-lg btn-glow">
+          <i class="fa-solid fa-bolt mr-2"></i> Створити Кімнату
+        </button>
+      </div>
+
+      <!-- ── Player Mode Panel ── -->
+      <div id="panel-player" class="hidden space-y-4">
+        <!-- Player Name -->
+        <input id="input-name" type="text" placeholder="Ім'я та Прізвище"
+          class="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors text-sm sm:text-base" />
+
+        <!-- Hierarchy Level -->
+        <select id="input-level"
+          class="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-lg text-gray-100 focus:border-green-500 focus:outline-none transition-colors appearance-none cursor-pointer text-sm sm:text-base">
+          <option value="" disabled selected>Оберіть рівень ієрархії...</option>
+          <option value="Керівник">Керівник (Head)</option>
+          <option value="Тімлід">Тімлід (Team Lead)</option>
+          <option value="Менеджер">Менеджер (Manager)</option>
+        </select>
+
+        <!-- Department / Role -->
+        <select id="input-role"
+          class="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-lg text-gray-100 focus:border-green-500 focus:outline-none transition-colors appearance-none cursor-pointer text-sm sm:text-base">
+          <option value="" disabled selected>Оберіть департамент...</option>
+          <option value="Форвард">Форвард (Forward — Booking)</option>
+          <option value="Методист">Методист (Methodist — Lessons/Sales)</option>
+          <option value="Друга лінія">Друга лінія (Second Line — Follow-up)</option>
+          <option value="Ретеншн">Ретеншн (Retention — Renewals)</option>
+          <option value="Над усіма">Над усіма (Above All) — тільки для Керівників</option>
+        </select>
+
+        <!-- Room Code -->
+        <input id="input-code" type="text" placeholder="Код кімнати (напр. bunker-4829)"
+          class="w-full px-4 py-3 bg-black/50 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:border-green-500 focus:outline-none transition-colors font-mono text-sm sm:text-base" />
+
+        <!-- Connect Button -->
+        <button onclick="joinRoom()"
+          class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30 text-base sm:text-lg btn-glow-green">
+          <i class="fa-solid fa-plug mr-2"></i> Підключитись
+        </button>
+      </div>
+
+      <!-- ── Status Bar ── -->
+      <div id="login-status" class="text-xs sm:text-sm text-gray-500 font-mono h-6"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCREEN 1.5 — PLAYER WAITING ROOM (LOBBY)
+       Shown after player connects, before Host starts the game.
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="screen-lobby" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="glass-card w-full max-w-md p-8 text-center space-y-6">
+      <i class="fa-solid fa-hourglass-half text-amber-400 text-5xl animate-pulse block"></i>
+      <h2 class="text-xl font-black uppercase tracking-widest text-amber-400">Очікування Запуску</h2>
+      <p class="text-gray-400 text-sm">Ви підключені до бункеру. Очікуйте поки Ведучий розпочне симуляцію...</p>
+      <div class="flex items-center justify-center gap-3">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span id="lobby-player-name" class="text-green-400 font-mono text-sm"></span>
+        <span class="text-gray-600">|</span>
+        <span id="lobby-player-level" class="text-gray-400 font-mono text-xs"></span>
+        <span class="text-gray-600">|</span>
+        <span id="lobby-player-role" class="text-gray-400 font-mono text-xs"></span>
+      </div>
+      <div class="pt-2">
+        <div class="scanning-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCREEN 2 — HOST DASHBOARD (CONTROL CENTER)
+       Only visible to the user who created the room.
+       Left panel: crisis triggers + player management.
+       Right panel: live monitoring terminal.
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="screen-host" class="hidden min-h-screen flex flex-col">
+
+    <!-- ── Header ── -->
+    <header class="border-b border-gray-800 bg-black/40 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-skull text-red-500 text-xl sm:text-2xl"></i>
+        <h2 class="text-lg sm:text-xl font-black uppercase tracking-widest text-red-500">Контроль Бункеру</h2>
+      </div>
+      <div class="flex items-center gap-4 sm:gap-6">
+        <!-- Copyable Room Code -->
+        <div class="flex items-center gap-2 cursor-pointer group" onclick="copyRoomCode()">
+          <span class="text-gray-400 text-xs sm:text-sm uppercase tracking-wide">Код:</span>
+          <span id="host-room-code" class="font-mono text-base sm:text-lg text-green-400 font-bold group-hover:text-green-300 transition-colors"></span>
+          <i class="fa-regular fa-copy text-gray-500 group-hover:text-green-400 transition-colors"></i>
+        </div>
+        <!-- Live Player Counter -->
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-users text-amber-400"></i>
+          <span id="player-count" class="font-mono text-amber-400 font-bold">0</span>
+          <span class="text-gray-400 text-xs sm:text-sm">online</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Main Content: Left Panel + Right Panel ── -->
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 overflow-hidden">
+
+      <!-- Left Panel — Crisis Management & Player List -->
+      <div class="lg:col-span-1 border-r border-gray-800 p-4 sm:p-6 space-y-4 overflow-y-auto">
+
+        <!-- Start Game Button (visible before game starts) -->
+        <button id="btn-start-game" onclick="startGame()"
+          class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30 text-base btn-glow-green">
+          <i class="fa-solid fa-play mr-2"></i> Запустити Гру
+        </button>
+
+        <h3 class="text-xs sm:text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">
+          <i class="fa-solid fa-triangle-exclamation mr-2 text-amber-400"></i> Управління Кризами
+        </h3>
+
+        <!-- Crisis 1: Red — Forward + Sabotage -->
+        <button onclick="triggerCrisis(1)" disabled
+          class="crisis-btn w-full py-3 sm:py-4 px-4 sm:px-5 bg-red-600/20 border border-red-500/40 hover:bg-red-600/40 rounded-lg text-left transition-all duration-300 group disabled:opacity-40 disabled:cursor-not-allowed">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-explosion text-red-500 text-lg sm:text-xl group-hover:scale-110 transition-transform"></i>
+            <div>
+              <div class="font-bold text-red-400 uppercase tracking-wide text-xs sm:text-sm">Криза 1</div>
+              <div class="text-xs text-gray-400 mt-0.5">Форвард + Саботаж</div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Crisis 2: Amber — Cheap Packages -->
+        <button onclick="triggerCrisis(2)" disabled
+          class="crisis-btn w-full py-3 sm:py-4 px-4 sm:px-5 bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/40 rounded-lg text-left transition-all duration-300 group disabled:opacity-40 disabled:cursor-not-allowed">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-coins text-amber-500 text-lg sm:text-xl group-hover:scale-110 transition-transform"></i>
+            <div>
+              <div class="font-bold text-amber-400 uppercase tracking-wide text-xs sm:text-sm">Криза 2</div>
+              <div class="text-xs text-gray-400 mt-0.5">Дешеві пакети</div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Crisis 3: Blue — Status Error -->
+        <button onclick="triggerCrisis(3)" disabled
+          class="crisis-btn w-full py-3 sm:py-4 px-4 sm:px-5 bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/40 rounded-lg text-left transition-all duration-300 group disabled:opacity-40 disabled:cursor-not-allowed">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-bug text-blue-500 text-lg sm:text-xl group-hover:scale-110 transition-transform"></i>
+            <div>
+              <div class="font-bold text-blue-400 uppercase tracking-wide text-xs sm:text-sm">Криза 3</div>
+              <div class="text-xs text-gray-400 mt-0.5">Помилка статусів</div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Connected Players List -->
+        <div class="mt-6">
+          <h3 class="text-xs sm:text-sm font-bold uppercase tracking-widest text-gray-400 mb-3">
+            <i class="fa-solid fa-satellite-dish mr-2 text-green-400"></i> Підключені Гравці
+          </h3>
+          <div id="player-list" class="space-y-2 font-mono text-xs sm:text-sm">
+            <p class="text-gray-600 italic">Очікування з'єднань...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel — Live Monitoring Terminal -->
+      <div class="lg:col-span-2 flex flex-col h-[50vh] lg:h-[calc(100vh-70px)]">
+        <div class="px-4 sm:px-6 py-2 sm:py-3 border-b border-gray-800 flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-green-400 text-sm"></i>
+          <span class="text-xs sm:text-sm font-bold uppercase tracking-widest text-gray-400">Термінал Моніторингу</span>
+          <span class="ml-auto text-xs text-gray-600 font-mono blink">● LIVE</span>
+        </div>
+        <div id="host-log" class="flex-1 overflow-y-auto p-4 sm:p-6 font-mono text-xs sm:text-sm space-y-1 terminal-bg">
+          <p class="text-green-500">[SYSTEM] Бункер активовано. Очікування гравців...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SCREEN 3 — PLAYER TERMINAL (GUEST INTERFACE)
+       Only visible to players after Host starts the game.
+       Shows profile, secret flaw, and the event feed.
+  ═══════════════════════════════════════════════════════════════ -->
+  <div id="screen-player" class="hidden min-h-screen flex flex-col">
+
+    <!-- ── Player Header ── -->
+    <header class="border-b border-gray-800 bg-black/40 backdrop-blur-md px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3 sm:gap-4">
+        <i class="fa-solid fa-user-secret text-green-400 text-xl sm:text-2xl"></i>
+        <div>
+          <h2 id="player-display-name" class="text-base sm:text-lg font-black uppercase tracking-widest text-green-400"></h2>
+          <span id="player-display-role" class="text-xs text-gray-400 uppercase tracking-wide"></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+        <span class="text-xs text-gray-400 font-mono uppercase">Connected</span>
+      </div>
+    </header>
+
+    <!-- ── Secret Flaw Accordion ── -->
+    <div id="flaw-section" class="border-b border-gray-800 hidden">
+      <button onclick="toggleFlaw()" class="w-full px-4 sm:px-6 py-3 flex items-center justify-between hover:bg-white/5 transition-colors">
+        <span class="text-xs sm:text-sm font-bold uppercase tracking-widest text-amber-400">
+          <i class="fa-solid fa-eye-slash mr-2"></i> Ваша Таємна Вада
+        </span>
+        <i id="flaw-chevron" class="fa-solid fa-chevron-down text-gray-500 transition-transform duration-300"></i>
+      </button>
+      <div id="flaw-content" class="hidden px-4 sm:px-6 pb-4">
+        <div class="glass-card p-4 border-l-4 border-amber-500">
+          <p id="flaw-name" class="font-bold text-amber-400 mb-1 text-sm"></p>
+          <p class="text-xs text-gray-400 mb-2">Суперсила:</p>
+          <p id="flaw-power" class="text-sm text-green-400 font-mono"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── The Feed (Terminal) ── -->
+    <div id="player-feed" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 terminal-bg">
+      <div class="text-center py-12" id="feed-placeholder">
+        <i class="fa-solid fa-hourglass-half text-gray-600 text-4xl mb-4 block animate-pulse"></i>
+        <p class="text-gray-500 font-mono text-xs sm:text-sm">Очікування вказівок від Ради Директорів...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load game logic -->
+  <script src="script.js"></script>
+</body>
+</html>
