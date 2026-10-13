@@ -9,7 +9,10 @@ export type FlawId =
   | 'low_standards'      // Невимогливість
   | 'lack_of_trust';     // Недовіра
 
+export type PowerId = 'team_shield' | 'wiretap' | 'blackmail' | 'golden_parachute' | 'talent_pool' | '';
+
 export interface SecretFlaw {
+  powerId: PowerId;
   id: FlawId;
   name: string;
   englishName: string;
@@ -29,6 +32,15 @@ export interface LoreProfile {
 
 export interface Player {
   id: string;
+  powerUnlockAcknowledged?: boolean;
+  voteSuppressed?: boolean;
+  canGhostVote?: boolean;
+  immuneActive?: boolean;
+  wiretapActive?: boolean;
+  lightBurned?: boolean;
+  alibi?: string | null;
+  understoodCrisis?: number | null;
+  isKicked?: boolean;
   name: string;
   level: HierarchyLevel;
   department: Department;
@@ -52,6 +64,7 @@ export type GamePhase =
   | 'CASCADE'
   | 'NEGOTIATION_TIMER'
   | 'PURGE_VOTING'
+  | 'OPEN_DISCUSSION'
   | 'VOTE_RESULTS'
   | 'ENDGAME';
 
@@ -59,6 +72,10 @@ export interface CrisisOption {
   id: string;
   text: string;
   type: 'constructive' | 'flawed' | 'custom' | 'sabotage';
+  disabled?: boolean;
+  noDirective?: boolean;
+  budgetImpact?: number;
+  severity?: 'light' | 'medium' | 'hard';
   flawMatch?: FlawId;
   isSabotage?: boolean;
 }
@@ -96,6 +113,8 @@ export interface ConsensusVote {
   optionId: string;
   text: string;
   isFlawed: boolean;
+  noDirective?: boolean;
+  budgetImpact?: number;
   isSabotage?: boolean;
   timestamp: string;
 }
@@ -119,10 +138,13 @@ export interface ConsensusGroup {
 
 export interface CascadeState {
   crisisId: number;
+  isSplit?: boolean;
+  directives?: Record<string, { playerId:string; playerName:string; text:string; optionId:string; isFlawed:boolean; noDirective?:boolean }>;
   currentStep: 'head' | 'teamLead' | 'manager' | 'completed';
   headDecision: {
     playerId: string;
     playerName: string;
+    noDirective?: boolean;
     optionId: string;
     text: string;
     isFlawed: boolean;
@@ -130,6 +152,7 @@ export interface CascadeState {
   teamLeadDecisions: Record<string, {
     playerId: string;
     playerName: string;
+    noDirective?: boolean;
     optionId: string;
     text: string;
     isFlawed: boolean;
@@ -138,6 +161,7 @@ export interface CascadeState {
   managerDecisions: Record<string, {
     playerId: string;
     playerName: string;
+    noDirective?: boolean;
     optionId: string;
     text: string;
     isFlawed: boolean;
@@ -173,13 +197,23 @@ export interface AuditLogEntry {
 }
 
 export interface GameState {
+  recoverySupport: string[];
+  recoveryAppliedRound: number;
+  budget: number;
+  budgetSettledRound: number;
+  voteIntents: Record<string,string>;
   roomCode: string;
+  revision: number;
+  tribune: { queue:string[]; index:number };
   phase: GamePhase;
   currentCrisisIndex: number; // 0 to 4
   roleLimits: RoleLimits;
   players: Record<string, Player>;
   cascade: CascadeState | null;
   timer: {
+    readyOpen: boolean;
+    readyEpoch: number;
+    deadline?: number | null;
     totalSeconds: number;
     remainingSeconds: number;
     isRunning: boolean;

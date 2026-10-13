@@ -1,0 +1,57 @@
+[
+  {
+    "id": "indifference",
+    "name": "Байдужість до результатів",
+    "englishName": "Inattention to Results",
+    "dysfunctionOrder": 5,
+    "superpower": "Золотий парашут",
+    "superpowerDescription": "Повний імунітет від одного звільнення в поточному раунді. Компанія втрачає 15 відсоткових пунктів бюджету.",
+    "behaviorRestriction": "Вам байдуже на виживання компанії чи успіх проекту. Обирайте варіанти, які захищають лише ваш особистий комфорт або знецінюють загальні цілі.",
+    "superpowerUsed": false,
+    "powerId": "golden_parachute"
+  },
+  {
+    "id": "fear_of_conflict",
+    "name": "Страх конфлікту",
+    "englishName": "Fear of Conflict",
+    "dysfunctionOrder": 2,
+    "superpower": "Командний щит",
+    "superpowerDescription": "Анулює один голос проти вас у поточному раунді.",
+    "behaviorRestriction": "Ви боїтеся відкритої конфронтації. Створюйте штучну гармонію, уникайте правди, погоджуйтеся з найгучнішими або ховайте проблеми під килим.",
+    "superpowerUsed": false,
+    "powerId": "team_shield"
+  },
+  {
+    "id": "avoidance",
+    "name": "Безвідповідальність",
+    "englishName": "Avoidance of Accountability",
+    "dysfunctionOrder": 4,
+    "superpower": "Корпоративний шантаж",
+    "superpowerDescription": "Таємно забирає право голосу в одного живого гравця на цей раунд. Уже поданий голос також анулюється.",
+    "behaviorRestriction": "Ніколи не визнавайте помилок свого відділу. Завжди звинувачуйте суміжні команди, форвард чи \"зовнішні непереборні фактори\".",
+    "superpowerUsed": false,
+    "powerId": "blackmail"
+  },
+  {
+    "id": "low_standards",
+    "name": "Невимогливість",
+    "englishName": "Low Standards & Lack of Commitment",
+    "dysfunctionOrder": 3,
+    "superpower": "Кадровий резерв",
+    "superpowerDescription": "Повертає одному привиду право подати один голос у поточному раунді. Привид залишається звільненим.",
+    "behaviorRestriction": "Не вимагайте від колег високої якості. Переконуйте всіх, що \"і так зійде\", захищайте нероб і знижуйте планку результату.",
+    "superpowerUsed": false,
+    "powerId": "talent_pool"
+  },
+  {
+    "id": "lack_of_trust",
+    "name": "Недовіра",
+    "englishName": "Absence of Trust",
+    "dysfunctionOrder": 1,
+    "superpower": "Тіньовий кардинал",
+    "superpowerDescription": "Приватно показує подані голоси та поточні наміри вибору цілі. Неподані наміри можуть змінитися.",
+    "behaviorRestriction": "Ви не довіряєте нікому у компанії. Вважайте, що вас хочуть підставити, приховуйте реальні дані та сійте параною серед колег.",
+    "superpowerUsed": false,
+    "powerId": "wiretap"
+  }
+]

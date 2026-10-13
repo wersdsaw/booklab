@@ -1,0 +1,13 @@
+services:
+  bunker:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set a unique ADMIN_PASSWORD of at least 12 characters}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
+    volumes:
+      - bunker-data:/app/data
+    restart: unless-stopped
+volumes:
+  bunker-data:

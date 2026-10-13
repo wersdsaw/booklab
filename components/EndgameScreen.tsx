@@ -7,11 +7,12 @@ import confetti from 'canvas-confetti';
 
 interface EndgameScreenProps {
   isVictory: boolean;
+  budget?: number;
   onRestart?: () => void;
   isHost?: boolean;
 }
 
-export default function EndgameScreen({ isVictory, onRestart, isHost }: EndgameScreenProps) {
+export default function EndgameScreen({ isVictory, onRestart, isHost, budget = 100 }: EndgameScreenProps) {
   useEffect(() => {
     if (isVictory) {
       confetti({
@@ -67,11 +68,12 @@ export default function EndgameScreen({ isVictory, onRestart, isHost }: EndgameS
             className="text-base sm:text-xl font-medium leading-relaxed font-sans text-gray-200 bg-black/50 p-6 rounded-xl border border-gray-800"
           >
             {isVictory
-              ? "Чудово, наша компанія почала зростати на очах, ми набрали більше людей, клієнти задоволені, все прекрасно. Так і продовжуємо ріст на ринку!"
-              : "Компанія втратила свої сили і розвиток. На ринку ми знищені і тепер всі розійшлись своїми шляхами. Що ми зробили не так?"}
+              ? budget <= 25 ? "Хоча наш бюджет був мінімальним, ми змогли зберегти все та почати процвітати завдяки професійній команді!" : "Команда подолала внутрішню кризу та зберегла фінансову стійкість. Професійний колектив готовий розвивати компанію!"
+              : budget < 10 ? "Бюджет компанії опустився нижче критичного порога. Фінансової стійкості не вдалося зберегти." : "Компанія програла внутрішню боротьбу: у команді залишилися приховані дисфункції. Що ми зробили не так?"}
           </motion.p>
         </div>
 
+        <p className="font-mono text-sm text-gray-300">Бюджет компанії: {budget}%</p>
         {isHost && (
           <motion.div
             initial={{ opacity: 0 }}

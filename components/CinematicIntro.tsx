@@ -12,9 +12,9 @@ interface CinematicIntroProps {
 export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps) {
   const introLines = [
     "Ми спокійно працювали в компанії.",
-    "Все було класно, але в один день зламалось все.",
+    "Раптом ринок обвалився.",
     "Тепер, щоб наша компанія залишилась цілою,",
-    "ми маємо відібрати тих співробітників, які цього заслуговують.",
+    "ми маємо позбутися дисфункцій, що руйнують команду.",
     "Відділи більше не мають значення,",
     "ми всі допомагаємо один одному.",
   ];
@@ -22,7 +22,7 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
   return (
     <div className="fixed inset-0 z-50 bg-[#0a0510] flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden">
       {/* Background glowing orb */}
-      <div className="absolute w-[500px] h-[500px] rounded-full bg-red-600/10 blur-[120px] pointer-events-none" />
+      <div className="absolute w-[500px] h-[500px] rounded-full bg-amber-600/5 blur-[120px] pointer-events-none" />
 
       {/* Floating Cyber Skull */}
       <motion.div
@@ -35,7 +35,7 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
         }}
         className="mb-8"
       >
-        <Skull className="w-20 h-20 text-red-500 drop-shadow-[0_0_25px_rgba(239,68,68,0.8)]" />
+        <Skull className="w-20 h-20 text-amber-200" />
       </motion.div>
 
       {/* Narrative Crawl with Staggered Fade & Slide */}
@@ -54,8 +54,8 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
               idx === 0 || idx === 1
                 ? 'text-gray-400 text-base md:text-xl'
                 : idx === 2 || idx === 3
-                ? 'text-red-400 text-lg md:text-2xl neon-text-red'
-                : 'text-green-400 text-xl md:text-3xl font-extrabold neon-text-green'
+                ? 'text-amber-200 text-lg md:text-2xl '
+                : 'text-green-400 text-xl md:text-3xl font-extrabold '
             }`}
           >
             {line}
@@ -71,10 +71,11 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
         className="mt-12 flex flex-col items-center gap-4"
       >
         <button
-          onClick={onFinish}
-          className="px-6 py-3 bg-red-600/20 hover:bg-red-600/40 border border-red-500/50 hover:border-red-500 text-red-300 hover:text-white rounded-lg text-sm font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 group shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+          onClick={isHost ? onFinish : undefined}
+          disabled={!isHost}
+          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 text-gray-200 hover:text-white rounded-lg text-sm font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 group "
         >
-          <span>{isHost ? 'Пропустити інтро для всіх' : 'Продовжити до профілю'}</span>
+          <span>{isHost ? 'Пропустити інтро для всіх' : 'Очікуємо ведучого…'}</span>
           <FastForward className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </motion.div>

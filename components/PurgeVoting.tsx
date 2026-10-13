@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import { DockActions } from './ActionDock';
+import React, { useState, useId } from 'react';
+import { getSocket } from '../lib/socket';
 import { Player, Department } from '../lib/types';
 import { Skull, UserX, AlertTriangle, Send, CheckCircle2 } from 'lucide-react';
 
@@ -15,6 +17,7 @@ export default function PurgeVoting({
   players,
   onSubmitVote,
 }: PurgeVotingProps) {
+  const voteFormId=useId();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export default function PurgeVoting({
 
   // Alive players excluding current user
   const candidates = Object.values(players).filter(
-    (p) => !p.isEliminated && p.id !== currentUser.id
+    (p) => !p.isEliminated && !p.isKicked && p.id !== currentUser.id
   );
 
   // Departments with active candidates
@@ -37,11 +40,13 @@ export default function PurgeVoting({
   const handleDepartmentSelect = (dept: Department) => {
     setSelectedDept(dept);
     setSelectedPlayerId(null);
+    getSocket().emit('set_vote_intent',{targetPlayerId:null});
     setStep(2);
   };
 
   const handlePlayerSelect = (pId: string) => {
     setSelectedPlayerId(pId);
+    getSocket().emit('set_vote_intent',{targetPlayerId:pId});
     setStep(3);
   };
 
@@ -66,19 +71,19 @@ export default function PurgeVoting({
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto my-4 glass-card p-6 border-2 border-red-500/70 neon-glow-red space-y-5">
+    <div className="w-full max-w-xl mx-auto my-4 glass-card p-6 border border-slate-600 space-y-5">
       {/* Step Indicator Header */}
       <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-        <div className="flex items-center gap-2 text-red-500 font-black text-xs uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-amber-200 font-black text-xs uppercase tracking-widest">
           <Skull className="w-4 h-4 animate-pulse" />
           <span>ФАЗА 6: ЧИСТКА — 3-ЕТАПНЕ ГОЛОСУВАННЯ</span>
         </div>
         <div className="flex items-center gap-1 font-mono text-xs">
-          <span className={step >= 1 ? 'text-red-400 font-bold' : 'text-gray-600'}>1.Відділ</span>
+          <span className={step >= 1 ? 'text-amber-200 font-bold' : 'text-gray-600'}>1.Відділ</span>
           <span className="text-gray-600">→</span>
-          <span className={step >= 2 ? 'text-red-400 font-bold' : 'text-gray-600'}>2.Особа</span>
+          <span className={step >= 2 ? 'text-amber-200 font-bold' : 'text-gray-600'}>2.Особа</span>
           <span className="text-gray-600">→</span>
-          <span className={step === 3 ? 'text-red-400 font-bold' : 'text-gray-600'}>3.Обґрунтування</span>
+          <span className={step === 3 ? 'text-amber-200 font-bold' : 'text-gray-600'}>3.Обґрунтування</span>
         </div>
       </div>
 
@@ -95,9 +100,9 @@ export default function PurgeVoting({
                 <button
                   key={dept}
                   onClick={() => handleDepartmentSelect(dept)}
-                  className="p-3.5 bg-black/50 hover:bg-red-950/40 border border-gray-800 hover:border-red-500/60 rounded-lg text-left transition-all flex items-center justify-between group"
+                  className="p-3.5 bg-black/50 hover:bg-slate-800/60 border border-gray-800 hover:border-slate-500 rounded-lg text-left transition-all flex items-center justify-between group"
                 >
-                  <span className="font-bold text-xs text-gray-200 group-hover:text-red-300">
+                  <span className="font-bold text-xs text-gray-200 group-hover:text-amber-200">
                     {dept}
                   </span>
                   <span className="text-[11px] font-mono text-gray-500">
@@ -115,10 +120,10 @@ export default function PurgeVoting({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-300">
-              Крок 2: Оберіть співробітника з відділу <span className="text-red-400">"{selectedDept}"</span>:
+              Крок 2: Оберіть співробітника з відділу <span className="text-amber-200">"{selectedDept}"</span>:
             </p>
             <button
-              onClick={() => setStep(1)}
+              onClick={() => {setStep(1);setSelectedPlayerId(null);getSocket().emit('set_vote_intent',{targetPlayerId:null});}}
               className="text-[11px] font-mono text-gray-500 hover:text-gray-300 underline"
             >
               ← Назад
@@ -130,17 +135,17 @@ export default function PurgeVoting({
               <button
                 key={cand.id}
                 onClick={() => handlePlayerSelect(cand.id)}
-                className="w-full p-3.5 bg-black/50 hover:bg-red-950/40 border border-gray-800 hover:border-red-500/60 rounded-lg text-left transition-all flex items-center justify-between group"
+                className="w-full p-3.5 bg-black/50 hover:bg-slate-800/60 border border-gray-800 hover:border-slate-500 rounded-lg text-left transition-all flex items-center justify-between group"
               >
                 <div>
-                  <div className="font-bold text-xs text-gray-100 group-hover:text-red-300">
+                  <div className="font-bold text-xs text-gray-100 group-hover:text-amber-200">
                     {cand.name}
                   </div>
                   <div className="text-[11px] font-mono text-gray-500">
                     {cand.level} • Зарплата: {cand.salary.toLocaleString('uk-UA')} ₴
                   </div>
                 </div>
-                <UserX className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors" />
+                <UserX className="w-4 h-4 text-gray-600 group-hover:text-amber-200 transition-colors" />
               </button>
             ))}
           </div>
@@ -149,10 +154,10 @@ export default function PurgeVoting({
 
       {/* STEP 3: Text Input Justification */}
       {step === 3 && targetPlayer && (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id={voteFormId} onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-300">
-              Крок 3: Чому на вашу думку <span className="text-red-400 font-bold">{targetPlayer.name}</span> зробив неправильний вибір?
+              Крок 3: Чому на вашу думку <span className="text-amber-200 font-bold">{targetPlayer.name}</span> зробив неправильний вибір?
             </p>
             <button
               type="button"
@@ -173,18 +178,21 @@ export default function PurgeVoting({
             onChange={(e) => setReason(e.target.value)}
             rows={3}
             required
+            minLength={3}
+            maxLength={1000}
             placeholder="Вкажіть конкретні факти: саботував роботу, мовчав у кризі, звинувачував інших чи знижував планку..."
-            className="w-full p-3 bg-black/60 border border-gray-700 rounded-lg text-xs text-gray-100 placeholder-gray-500 focus:border-red-500 focus:outline-none font-sans"
+            className="w-full p-3 bg-black/60 border border-gray-700 rounded-lg text-xs text-gray-100 placeholder-gray-500 focus:border-sky-400 focus:outline-none font-sans"
           />
 
-          <button
+          <DockActions><button
             type="submit"
-            disabled={!reason.trim()}
-            className="w-full py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black uppercase tracking-widest rounded-lg transition-all text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+            form={voteFormId}
+            disabled={reason.trim().length < 3}
+            className="primary-action"
           >
             <Skull className="w-4 h-4" />
             <span>Віддати голос на звільнення</span>
-          </button>
+          </button></DockActions>
         </form>
       )}
     </div>

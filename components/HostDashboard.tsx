@@ -3,7 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GameState, Player, AuditLogEntry, RoleLimits } from '../lib/types';
 import { CRISES_DATA } from '../lib/crises';
+import { DockActions } from './ActionDock';
 import NodeTree from './NodeTree';
+import BudgetIndicator from './BudgetIndicator';
+import TimedPhase from './TimedPhase';
 import {
   Skull,
   Play,
@@ -66,6 +69,8 @@ export default function HostDashboard({
 
   const players = Object.values(gameState.players);
   const alivePlayers = players.filter((p) => !p.isEliminated);
+  const lobbyPlayers = players.filter((p) => !p.isKicked);
+  const canStartGame = lobbyPlayers.length > 0;
   const ghostPlayers = players.filter((p) => p.isEliminated);
   const acknowledgedCount = players.filter((p) => p.isAcknowledged).length;
 
@@ -97,13 +102,13 @@ export default function HostDashboard({
   const timerDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   return (
-    <div className="min-h-screen bg-[#0a0510] text-gray-100 flex flex-col font-sans">
+    <div className="host-dashboard min-h-screen bg-[#0a0510] text-gray-100 flex flex-col font-sans">
       {/* ─── TOP COMMAND BAR ────────────────────────────────────── */}
       <header className="border-b border-gray-800 bg-black/60 backdrop-blur-md px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <Skull className="w-7 h-7 text-red-500 animate-pulse" />
+          <Skull className="w-7 h-7 text-amber-200 animate-pulse" />
           <div>
-            <h1 className="text-base sm:text-lg font-black uppercase tracking-widest text-red-500 neon-text-red">
+            <h1 className="text-base sm:text-lg font-black uppercase tracking-widest text-amber-200 ">
               КОМАНДНИЙ ЦЕНТР СЕО
             </h1>
             <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider block">
@@ -112,6 +117,7 @@ export default function HostDashboard({
           </div>
         </div>
 
+        <BudgetIndicator value={gameState.budget}/>
         {/* Room Code & Stats */}
         <div className="flex items-center gap-4 sm:gap-6 flex-wrap font-mono">
           <button
@@ -141,25 +147,32 @@ export default function HostDashboard({
             )}
           </div>
 
-          <div className="px-3 py-1 rounded bg-red-950/40 border border-red-500/40 text-red-400 font-bold text-xs uppercase tracking-wider">
+          <div className="px-3 py-1 rounded bg-slate-900/60 border border-slate-600 text-amber-200 font-bold text-xs uppercase tracking-wider">
             Фаза: {gameState.phase}
           </div>
         </div>
       </header>
 
       {/* ─── SUBHEADER ACTION TOOLBAR ────────────────────────────── */}
-      <div className="bg-gray-950/70 border-b border-gray-800 px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap text-xs">
+      <DockActions>
         {/* Quick Phase Controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {gameState.phase === 'LOBBY' && (
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={onStartGame}
+                disabled={!canStartGame}
+                aria-describedby="lobby-start-status"
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>Запустити гру (Start Simulation)</span>
               </button>
+              <span id="lobby-start-status" role="status" className="text-xs text-gray-400">
+                {canStartGame
+                  ? 'Можна починати, коли команда готова.'
+                  : 'Дочекайтеся приєднання хоча б одного гравця.'}
+              </span>
               {onUpdateRoleLimits && (
                 <button
                   onClick={() => setShowRoleSettings(!showRoleSettings)}
@@ -175,7 +188,7 @@ export default function HostDashboard({
           {gameState.phase === 'INTRO_CINEMATIC' && (
             <button
               onClick={onFinishIntro}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
             >
               <FastForward className="w-3.5 h-3.5" />
               <span>Пропустити інтро → Ознайомлення</span>
@@ -189,6 +202,7 @@ export default function HostDashboard({
             </div>
           )}
 
+          {gameState.phase === 'CRISIS_TRIGGER' && <button className="primary-action" onClick={()=>onTriggerCrisis(gameState.currentCrisisIndex+1)}>ЗАПУСТИТИ КРИЗУ</button>}
           {gameState.phase === 'CASCADE' && (
             <button
               onClick={onAdvanceToNegotiation}
@@ -220,7 +234,7 @@ export default function HostDashboard({
               </button>
               <button
                 onClick={onForceStartVoting}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold uppercase tracking-wider transition-all"
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
               >
                 Перейти до чистки (Голосування)
               </button>
@@ -229,14 +243,14 @@ export default function HostDashboard({
 
           {gameState.phase === 'PURGE_VOTING' && (
             <div className="flex items-center gap-3">
-              <span className="text-red-400 font-mono">
+              <span className="text-amber-200 font-mono">
                 Проголосували: {players.filter((p) => p.hasVoted).length} / {alivePlayers.length}
               </span>
               <button
                 onClick={onForceTallyVotes}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold uppercase tracking-wider transition-all"
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
               >
-                Підрахувати голоси зараз
+                Завершити голосування → Обговорення
               </button>
             </div>
           )}
@@ -251,7 +265,8 @@ export default function HostDashboard({
             </button>
           )}
         </div>
-      </div>
+      </DockActions>
+      {['PURGE_VOTING','OPEN_DISCUSSION'].includes(gameState.phase) && <TimedPhase state={gameState}/>}
 
       {/* Role Limits Configuration Panel (Lobby) */}
       {showRoleSettings && gameState.phase === 'LOBBY' && (
@@ -321,7 +336,7 @@ export default function HostDashboard({
             <button
               onClick={() => setActiveTab('tree')}
               className={`flex-1 py-2 font-bold uppercase tracking-wider rounded transition-colors ${
-                activeTab === 'tree' ? 'bg-red-600/30 text-red-400 border border-red-500/40' : 'text-gray-400 hover:text-gray-200'
+                activeTab === 'tree' ? 'bg-red-600/30 text-amber-200 border border-slate-600' : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               <Users className="w-3.5 h-3.5 inline mr-1.5" />
@@ -492,13 +507,13 @@ export default function HostDashboard({
                       key={cr.id}
                       className={`glass-card p-4 border transition-all ${
                         isCurrent
-                          ? 'border-red-500/70 bg-red-950/20 neon-glow-red'
+                          ? 'border-slate-600 bg-slate-900/60 '
                           : 'border-gray-800 bg-black/40'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-mono uppercase text-red-400 font-bold">
+                          <span className="text-[10px] font-mono uppercase text-amber-200 font-bold">
                             КРИЗА #{cr.id}
                           </span>
                           <h4 className="font-bold text-sm text-gray-100">{cr.title}</h4>
@@ -507,8 +522,9 @@ export default function HostDashboard({
                           </p>
                         </div>
                         <button
+                          disabled={gameState.phase !== 'CRISIS_TRIGGER' || cr.id !== gameState.currentCrisisIndex + 1}
                           onClick={() => onTriggerCrisis(cr.id)}
-                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex-shrink-0 transition-colors"
+                          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex-shrink-0 transition-colors"
                         >
                           Запустити
                         </button>
@@ -538,7 +554,7 @@ export default function HostDashboard({
                       className="p-3 rounded-lg bg-black/50 border border-gray-800 text-xs font-mono space-y-1"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-red-400 font-bold">{v.voterName}</span>
+                        <span className="text-amber-200 font-bold">{v.voterName}</span>
                         <span className="text-gray-500">→ проти →</span>
                         <span className="text-amber-400 font-bold">
                           {v.targetPlayerName} ({v.targetDepartment})
@@ -598,11 +614,11 @@ export default function HostDashboard({
                     entry.isGhostMessage
                       ? 'text-purple-300 bg-purple-950/20 p-2 rounded border border-purple-500/30'
                       : isSabotage
-                      ? 'text-red-400 bg-red-950/20 p-2 rounded border border-red-500/30 font-bold'
+                      ? 'text-amber-200 bg-slate-900/60 p-2 rounded border border-slate-700 font-bold'
                       : entry.type === 'vote'
                       ? 'text-amber-300'
                       : entry.type === 'crisis'
-                      ? 'text-red-300'
+                      ? 'text-gray-300'
                       : 'text-gray-400'
                   }`}
                 >
@@ -610,7 +626,7 @@ export default function HostDashboard({
                   <span
                     className={
                       isSabotage
-                        ? 'text-red-500 font-extrabold'
+                        ? 'text-amber-200 font-extrabold'
                         : entry.isGhostMessage
                         ? 'text-purple-400 font-bold'
                         : 'text-green-400'

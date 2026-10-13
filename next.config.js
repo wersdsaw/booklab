@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: false, // helps avoid double-effects with websockets in dev
-}
-
-module.exports = nextConfig
+module.exports = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  // Keep an existing development server from overwriting production manifests.
+  distDir: process.env.NODE_ENV === 'production' ? '.next-production' : '.next-dev',
+};

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import { DockActions } from './ActionDock';
+import React, { useState, useEffect } from 'react';
 import { Player } from '../lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, CheckCircle2, ChevronDown, ChevronUp, Wallet, Flame, Info } from 'lucide-react';
@@ -18,15 +19,17 @@ export default function ProfileAcknowledgment({
 }: ProfileAckProps) {
   const [isExpanded, setIsExpanded] = useState(!isCollapsedDefault);
 
+  useEffect(() => { setIsExpanded(!player.isAcknowledged && !isCollapsedDefault); }, [player.isAcknowledged, isCollapsedDefault]);
+
   return (
     <div className="w-full max-w-xl mx-auto my-4">
       {/* Header Bar */}
-      <div
+      <button type="button" aria-expanded={isExpanded}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="glass-card p-4 flex items-center justify-between cursor-pointer border border-gray-700 hover:border-gray-500 transition-colors"
+        className="glass-card w-full text-left p-4 flex items-center justify-between cursor-pointer border border-gray-700 hover:border-gray-500 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center font-black text-red-400 text-lg">
+          <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-black text-amber-200 text-lg">
             {player.name.charAt(0)}
           </div>
           <div>
@@ -61,7 +64,7 @@ export default function ProfileAcknowledgment({
             <ChevronDown className="w-4 h-4 text-gray-400" />
           )}
         </div>
-      </div>
+      </button>
 
       {/* Expanded Content */}
       <AnimatePresence>
@@ -95,7 +98,7 @@ export default function ProfileAcknowledgment({
 
               <div className="bg-black/30 p-3 rounded-lg border border-gray-800 space-y-1">
                 <span className="text-gray-400 font-bold uppercase flex items-center gap-1">
-                  <Flame className="w-3 h-3 text-red-400" /> Спосіб життя:
+                  <Flame className="w-3 h-3 text-amber-200" /> Спосіб життя:
                 </span>
                 <p className="text-gray-300">{player.lore.lifestyle}</p>
               </div>
@@ -103,20 +106,15 @@ export default function ProfileAcknowledgment({
 
             {/* Secret Flaw Block (if assigned) */}
             {player.flaw ? (
-              <div className="p-4 rounded-lg bg-red-950/30 border-2 border-red-500/60 neon-glow-red space-y-2.5">
-                <div className="flex items-center gap-2 text-red-400 font-black text-sm uppercase tracking-wider">
-                  <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
+              <div className="p-4 rounded-lg bg-slate-900/60 border border-slate-600 space-y-2.5">
+                <div className="flex items-center gap-2 text-amber-200 font-black text-sm uppercase tracking-wider">
+                  <ShieldAlert className="w-5 h-5 text-amber-200 animate-pulse" />
                   <span>ТАЄМНА ВАДА: {player.flaw.name}</span>
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <p className="text-red-200 font-medium">
-                    <span className="text-red-400 font-bold uppercase">Суперсила:</span>{' '}
-                    <span className="font-mono text-green-400">{player.flaw.superpower}</span> —{' '}
-                    {player.flaw.superpowerDescription}
-                  </p>
-                  <div className="p-2.5 bg-black/50 rounded border border-red-500/30 text-amber-300 text-xs">
-                    <span className="font-bold uppercase text-red-400 block mb-0.5">
+                  <div className="p-2.5 bg-black/50 rounded border border-slate-700 text-amber-300 text-xs">
+                    <span className="font-bold uppercase text-amber-200 block mb-0.5">
                       Критичне правило поведінки:
                     </span>
                     {player.flaw.behaviorRestriction}
@@ -132,16 +130,16 @@ export default function ProfileAcknowledgment({
 
             {/* Prominent Green "Ознайомився" Button */}
             {!player.isAcknowledged && (
-              <button
+              <DockActions><button
                 onClick={() => {
                   onAcknowledge();
                   setIsExpanded(false);
                 }}
-                className="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.7)] text-sm flex items-center justify-center gap-2"
+                className="primary-action"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Ознайомився (Acknowledged)</span>
-              </button>
+              </button></DockActions>
             )}
           </motion.div>
         )}

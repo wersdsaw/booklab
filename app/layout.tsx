@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Корпоративний Бункер | Психологічна рольова гра',
-  description: 'Психологічна бізнес-симуляція на 12+ гравців за мотивами Патріка Ленсіоні "5 вад команди".',
+  description: 'Психологічна бізнес-симуляція про довіру, рішення та виживання команди.',
 };
 
 export default function RootLayout({
@@ -12,7 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="uk" className="dark">
+    // Browser extensions can add attributes to <html> before React hydrates.
+    // Limit suppression to this element; keep application mismatch checks active.
+    <html lang="uk" className="dark" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#0a0510" />
       </head>

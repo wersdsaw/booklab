@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { DockActions } from './ActionDock';
 import { motion } from 'framer-motion';
 import { Clock, AlertOctagon, HelpCircle, Check, X } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export default function NegotiationTimer({
   return (
     <div className="w-full max-w-xl mx-auto my-4 space-y-5">
       {/* Consequence Impact Card */}
-      <div className="glass-card p-5 border-l-4 border-amber-500 neon-glow-amber space-y-2">
+      <div className="glass-card p-5 info-card border border-slate-600 space-y-2">
         <div className="flex items-center gap-2 text-amber-400 font-black text-xs uppercase tracking-widest">
           <AlertOctagon className="w-4 h-4 text-amber-500 animate-pulse" />
           <span>ФАЗА 5: НАСЛІДКИ ТА ОБГОВОРЕННЯ</span>
@@ -55,7 +56,7 @@ export default function NegotiationTimer({
             animate={{ scale: isRunning && remainingSeconds <= 30 ? [1, 1.05, 1] : 1 }}
             transition={{ repeat: Infinity, duration: 1 }}
             className={`font-mono text-5xl sm:text-6xl font-black tracking-widest ${
-              remainingSeconds <= 30 ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]' : 'text-gray-100'
+              remainingSeconds <= 30 ? 'text-amber-200' : 'text-gray-100'
             }`}
           >
             {formattedTime}
@@ -66,7 +67,7 @@ export default function NegotiationTimer({
         <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-1000 ${
-              remainingSeconds <= 30 ? 'bg-red-500' : 'bg-amber-500'
+              remainingSeconds <= 30 ? 'bg-amber-400' : 'bg-amber-500'
             }`}
             style={{ width: `${progressPercent}%` }}
           />
@@ -82,7 +83,7 @@ export default function NegotiationTimer({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-5 border-2 border-amber-500 neon-glow-amber space-y-4 text-center"
+          className="glass-card p-5 border border-slate-600 space-y-4 text-center"
         >
           <div className="flex items-center justify-center gap-2 text-amber-400 font-black text-sm uppercase tracking-wide">
             <HelpCircle className="w-5 h-5 text-amber-500" />
@@ -95,25 +96,25 @@ export default function NegotiationTimer({
 
           {hasVotedReady ? (
             <div className="p-3 bg-black/40 rounded-lg text-xs font-mono text-gray-300">
-              Ваша відповідь: <strong className={myReadyVote ? 'text-green-400' : 'text-red-400'}>{myReadyVote ? 'ТАК' : 'НІ'}</strong>. Очікуємо голосів решти команди...
+              Ваша відповідь: <strong className={myReadyVote ? 'text-green-400' : 'text-amber-200'}>{myReadyVote ? 'ТАК' : 'НІ'}</strong>. Очікуємо голосів решти команди...
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <DockActions>
               <button
                 onClick={() => onVoteReady(true)}
-                className="py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                className="primary-action"
               >
                 <Check className="w-4 h-4" />
                 <span>Так (До голосування)</span>
               </button>
               <button
                 onClick={() => onVoteReady(false)}
-                className="py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+                className="secondary-action"
               >
                 <X className="w-4 h-4" />
                 <span>Ні (+1:00 хв)</span>
               </button>
-            </div>
+            </DockActions>
           )}
         </motion.div>
       )}
