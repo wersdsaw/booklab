@@ -46,16 +46,16 @@ export default function CrisisCascade({player,crisis,cascade,onSubmitDecision}:{
       {Object.values(cascade.teamLeadDecisions).map((v,i)=><p key={i} className="text-sm text-gray-300">{v.playerName}: {v.text}</p>)}
     </section>}
     {player.alibi&&<section className="glass-card alibi-card p-5"><div className="eyebrow">ПРИВАТНЕ АЛІБІ / ЛИШЕ ДЛЯ ВАС</div><p className="text-sm mt-3 text-gray-200 leading-relaxed">{player.alibi}</p></section>}
-    {exhausted&&(decided||!myTurn)&&<div className="decision-card exhausted-option" aria-label="Light — Варіант вичерпано"><span className="exhausted-badge">Вичерпано · Light використано</span><span>{exhausted.text}</span></div>}
+    {exhausted&&(decided||!myTurn)&&<div className="decision-card exhausted-option" aria-label="Light — Варіант вичерпано"><span className="exhausted-badge">Exhausted (Light used)</span><span>{exhausted.text}</span></div>}
     <section className="glass-card p-5 space-y-4">
       <div className="flex items-center justify-between gap-3"><h4 className="cascade-prompt text-sm text-gray-200 font-semibold">{config.prompt}</h4><span className="text-[10px] text-gray-400">{player.level}</span></div>
-      {decided?<div className="decision-status"><CheckCircle size={22}/><p>{group?.isResolved?'Рішення зафіксовано. Очікуйте наступного етапу.':`Очікуємо решту команди: ${Object.keys(group?.votes||{}).length}/${group?.expectedVoterIds.length} рішень.`}</p>{group?.winningText&&<p className="text-gray-400">{group.winningText}</p>}</div>
+      {decided?<div className="decision-status decision-locked" role="status"><CheckCircle size={22}/><p>{group?.isResolved?'Рішення зафіксовано. Очікуйте наступного етапу.':`Очікуємо решту команди: ${Object.keys(group?.votes||{}).length}/${group?.expectedVoterIds.length} рішень.`}</p>{group?.winningText&&<p className="text-gray-400">{group.winningText}</p>}</div>
       :!myTurn?<div className="decision-status"><Clock size={22}/><p>{cascade.currentStep==='head'?'Керівники ухвалюють рішення.':cascade.currentStep==='teamLead'?'Тімліди передають директиви.':'Очікуємо завершення каскаду.'}</p></div>
       :!player.isEliminated&&<>
         {player.flaw&&<p className="flaw-warning"><ShieldAlert size={17}/><span>Увага: через ваду «{player.flaw.name}» ваші варіанти обмежені!</span></p>}
         <div className="space-y-3">{options.map(o=><button key={o.id} type="button" disabled={o.disabled} aria-pressed={selectedId===o.id} aria-label={o.disabled?`${o.text} — Варіант вичерпано`:o.text} onClick={()=>{setSelectedId(o.id);setCustomText('');}}
           className={`decision-card ${o.disabled?'exhausted-option':o.severity==='hard'?'decision-hard':o.severity==='medium'?'decision-medium':''} ${selectedId===o.id?'is-selected':''}`}>
-          {o.disabled?<span className="exhausted-badge">Вичерпано · Light використано</span>:o.severity&&<span className="decision-severity">{o.severity}</span>}
+          {o.disabled?<span className="exhausted-badge">Exhausted (Light used)</span>:o.severity&&<span className="decision-severity">{o.severity}</span>}
           <span>{o.text}</span>
         </button>)}</div>
         {!player.flaw&&config.allowsCustomInput&&<form onSubmit={e=>{e.preventDefault();confirm();}} className="pt-3 space-y-2"><label className="block text-xs text-gray-400" htmlFor="custom-decision">Або запропонуйте власне рішення</label><input id="custom-decision" maxLength={1000} value={customText} onChange={e=>{setCustomText(e.target.value);setSelectedId(null);}} placeholder="Як би ви діяли?" className="w-full px-3 py-3 bg-black/30 border border-gray-700 rounded-lg text-sm"/></form>}

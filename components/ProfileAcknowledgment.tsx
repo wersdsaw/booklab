@@ -26,7 +26,7 @@ export default function ProfileAcknowledgment({
       {/* Header Bar */}
       <button type="button" aria-expanded={isExpanded}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="glass-card w-full text-left p-4 flex items-center justify-between cursor-pointer border border-gray-700 hover:border-gray-500 transition-colors"
+        className="glass-card profile-card w-full text-left p-4 flex items-center justify-between cursor-pointer border border-gray-700 hover:border-gray-500 transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="profile-avatar w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg">
@@ -74,7 +74,7 @@ export default function ProfileAcknowledgment({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="glass-card mt-2 p-5 border border-gray-800 space-y-4 overflow-hidden"
+            className="glass-card profile-card mt-2 p-5 border border-gray-800 space-y-4 overflow-hidden"
           >
             {/* Lore Story */}
             <div className="space-y-2">
@@ -89,15 +89,15 @@ export default function ProfileAcknowledgment({
 
             {/* Expenses & Lifestyle */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-              <div className="bg-black/30 p-3 rounded-lg border border-gray-800 space-y-1">
-                <span className="text-gray-400 font-bold uppercase flex items-center gap-1">
+              <div className="profile-detail bg-black/30 p-3 rounded-lg border border-gray-800 space-y-1">
+                <span className="profile-detail-label font-bold uppercase flex items-center gap-1">
                   <Wallet className="w-3 h-3 text-amber-400" /> Щомісячні витрати:
                 </span>
                 <p className="text-gray-300">{player.lore.expenses}</p>
               </div>
 
-              <div className="bg-black/30 p-3 rounded-lg border border-gray-800 space-y-1">
-                <span className="text-gray-400 font-bold uppercase flex items-center gap-1">
+              <div className="profile-detail bg-black/30 p-3 rounded-lg border border-gray-800 space-y-1">
+                <span className="profile-detail-label font-bold uppercase flex items-center gap-1">
                   <Flame className="w-3 h-3 text-amber-200" /> Спосіб життя:
                 </span>
                 <p className="text-gray-300">{player.lore.lifestyle}</p>

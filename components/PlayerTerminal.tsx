@@ -111,7 +111,6 @@ export default function PlayerTerminal({
           isCollapsedDefault={gameState.phase !== 'PROFILE_ACK'}
         />}
 
-        <SuperpowerPanel state={gameState} player={player}/>
         {player.alibi && ['NEGOTIATION_TIMER','PURGE_VOTING','OPEN_DISCUSSION'].includes(gameState.phase) && <section className="glass-card alibi-card p-5"><div className="eyebrow">ПРИВАТНЕ АЛІБІ</div><p className="text-sm mt-3 text-gray-200 leading-relaxed">{player.alibi}</p></section>}
         {/* Phase-Driven Dynamic Action Views */}
         {gameState.phase === 'LOBBY' && (
@@ -198,6 +197,8 @@ export default function PlayerTerminal({
             )}
           </div>
         )}
+
+        <SuperpowerPanel state={gameState} player={player}/>
 
         {/* Ghost Mode Terminal if eliminated */}
         {player.isEliminated && (
