@@ -22,7 +22,7 @@ export default function GhostMode({ playerName, onSendGhostMessage }: GhostModeP
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto my-4 p-5 rounded-xl bg-gray-900/80 border border-gray-600 shadow-2xl space-y-4">
+    <div className="ghost-panel w-full max-w-xl mx-auto my-4 p-5 rounded-xl bg-gray-900/80 border border-gray-600 shadow-2xl space-y-4">
       <div className="flex items-center gap-3 border-b border-gray-700 pb-3">
         <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center text-gray-300">
           <Ghost className="w-6 h-6 animate-bounce" />

@@ -337,7 +337,7 @@ export default function HostDashboard({
               onClick={() => setActiveTab('tree')}
               aria-pressed={activeTab === 'tree'}
               className={`flex-1 py-2 font-bold uppercase tracking-wider rounded transition-colors ${
-                activeTab === 'tree' ? 'bg-red-600/30 text-amber-200 border border-slate-600' : 'text-gray-400 hover:text-gray-200'
+                activeTab === 'tree' ? 'bg-red-600/30 text-red-400 border border-red-500/40' : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               <Users className="w-3.5 h-3.5 inline mr-1.5" />

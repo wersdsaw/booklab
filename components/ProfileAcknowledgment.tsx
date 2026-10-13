@@ -135,7 +135,7 @@ export default function ProfileAcknowledgment({
                   onAcknowledge();
                   setIsExpanded(false);
                 }}
-                className="primary-action"
+                className="primary-action acknowledge-action"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Ознайомився (Acknowledged)</span>

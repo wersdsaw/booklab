@@ -35,7 +35,7 @@ export default function NegotiationTimer({
   return (
     <div className="w-full max-w-xl mx-auto my-4 space-y-5">
       {/* Consequence Impact Card */}
-      <div className="glass-card p-5 info-card border border-slate-600 space-y-2">
+      <div className="glass-card p-5 consequence-card border space-y-2">
         <div className="flex items-center gap-2 text-amber-400 font-black text-xs uppercase tracking-widest">
           <AlertOctagon className="w-4 h-4 text-amber-500 animate-pulse" />
           <span>ФАЗА 5: НАСЛІДКИ ТА ОБГОВОРЕННЯ</span>

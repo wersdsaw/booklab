@@ -219,8 +219,7 @@ function apply(room, actor, event, payload = {}) {
       p.lastAction = option.text;
       if (toxic) {
         if (option.severity === 'light') p.lightBurned = true;
-        const tierCount = active(room).filter(q => q.level === p.level).length;
-        p.alibi = privateAlibi(CRISES_DATA[room.currentCrisisIndex], p, option, option.budgetImpact / tierCount);
+        p.alibi = privateAlibi(p, option.severity);
       }
       log(room, toxic ? 'sabotage' : 'cascade', p.name, option.text, true); settleCascade(room); break;
     }

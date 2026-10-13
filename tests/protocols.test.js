@@ -29,7 +29,20 @@ function vote(r,p,target){apply(r,actor(p),'submit_purge_vote',{targetPlayerId:t
 test('45 authored options and concise two-sentence alibis omit scenario metadata',()=>{
   const texts=new Set(),alibis=new Set();
   for(const level of LEVELS)for(const flaw of ALL_FLAWS){const p={name:'Tester',level,department:DEPARTMENTS[0],flaw};const options=crisisChoices(CRISES_DATA[0],p);assert.equal(options.length,3);
-    for(const option of options){assert.ok(!texts.has(option.text));texts.add(option.text);const alibi=privateAlibi(CRISES_DATA[0],p,option,option.budgetImpact);assert.equal((alibi.match(/[.!?](?:\s|$)/g)||[]).length,2);assert.ok(alibi.length<400);assert.ok(!alibi.includes(CRISES_DATA[0].title));assert.ok(!/[0-9%]|Сценарій:|в\.п\./.test(alibi));assert.ok(!option.text.includes('Сценарій:'));alibis.add(alibi);}
+    for(const option of options){
+      assert.ok(!texts.has(option.text));texts.add(option.text);
+      const alibi=privateAlibi(p,option.severity);
+      const sentences=alibi.split(/(?<=[.!?])\s+/u);
+      assert.equal(sentences.length,2);
+      assert.equal((alibi.match(/[.!?](?:\s|$)/g)||[]).length,2);
+      assert.ok(alibi.length<=220);
+      for(const sentence of sentences)assert.ok(sentence.split(/\s+/u).length<=20);
+      const metadataPlayer={...p,name:'${scenario.title} 0.50%',department:'Бюджет = -3 / 15'};
+      assert.equal(privateAlibi(metadataPlayer,option.severity),alibi);
+      assert.ok(!alibi.includes(CRISES_DATA[0].title));
+      assert.ok(!/[0-9%]|Сценарій:|в\.п\./.test(alibi));
+      assert.ok(!option.text.includes('Сценарій:'));alibis.add(alibi);
+    }
   }
   assert.equal(texts.size,45);assert.equal(alibis.size,45);
 });

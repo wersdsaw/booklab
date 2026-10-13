@@ -106,7 +106,7 @@ class Store {
       for (const p of Object.values(r.players)) if (p.flaw && p.alibi) {
         const vote=Object.values(r.cascade?.consensusGroups || {}).flatMap(g=>Object.values(g.votes)).find(v=>v.playerId===p.id);
         const severity=vote?.optionId.match(/^toxic_(light|medium|hard)(?:_|$)/)?.[1];
-        if(severity)p.alibi=privateAlibi(null,p,{severity},0);
+        if(severity)p.alibi=privateAlibi(p,severity);
       }
       r.votes=rows('purge_ballots').map(v => ({voterId:v.voter_id,voterName:r.players[v.voter_id].name,targetPlayerId:v.target_id,targetPlayerName:r.players[v.target_id].name,targetDepartment:r.players[v.target_id].department,reason:v.reason}));
       r.logs=rows('audit_entries').map(l => ({id:l.id,timestamp:l.timestamp,type:l.type,sender:l.sender,message:l.message,secret:!!l.secret,isGhostMessage:!!l.ghost}));

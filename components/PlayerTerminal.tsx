@@ -96,11 +96,7 @@ export default function PlayerTerminal({
           )}
         </div>
       </header>
-      {player.isEliminated && (
-        <div role="status" className="border-b border-gray-700 bg-gray-900/80 px-4 py-2 text-center text-[10px] font-mono tracking-wider text-gray-300">
-          {player.canGhostVote ? 'РЕЖИМ ПРИВИДА · ПОВЕРНУТО ПРАВО НА ОДИН ГОЛОС' : 'РЕЖИМ ПРИВИДА · ЛИШЕ ПЕРЕГЛЯД'}
-        </div>
-      )}
+
 
       {/* ─── MAIN CONTENT FEED ────────────────────────────────────── */}
       <main className="flex-1 p-4 max-w-2xl w-full mx-auto space-y-4">
@@ -110,6 +106,19 @@ export default function PlayerTerminal({
           onAcknowledge={onAcknowledge}
           isCollapsedDefault={gameState.phase !== 'PROFILE_ACK'}
         />}
+
+        {player.isEliminated && (
+          <div role="status" className="border-b border-gray-700 bg-gray-900/80 px-4 py-2 text-center text-[10px] font-mono tracking-wider text-gray-300">
+            {player.canGhostVote ? 'РЕЖИМ ПРИВИДА · ПОВЕРНУТО ПРАВО НА ОДИН ГОЛОС' : 'РЕЖИМ ПРИВИДА · ЛИШЕ ПЕРЕГЛЯД'}
+          </div>
+        )}
+        {/* Ghost Mode Terminal if eliminated */}
+        {player.isEliminated && (
+          <GhostMode
+            playerName={player.name}
+            onSendGhostMessage={onSendGhostMessage}
+          />
+        )}
 
         {player.alibi && ['NEGOTIATION_TIMER','PURGE_VOTING','OPEN_DISCUSSION'].includes(gameState.phase) && <section className="glass-card alibi-card p-5"><div className="eyebrow">ПРИВАТНЕ АЛІБІ</div><p className="text-sm mt-3 text-gray-200 leading-relaxed">{player.alibi}</p></section>}
         {/* Phase-Driven Dynamic Action Views */}
@@ -200,13 +209,7 @@ export default function PlayerTerminal({
 
         <SuperpowerPanel state={gameState} player={player}/>
 
-        {/* Ghost Mode Terminal if eliminated */}
-        {player.isEliminated && (
-          <GhostMode
-            playerName={player.name}
-            onSendGhostMessage={onSendGhostMessage}
-          />
-        )}
+
       </main>
 
       {/* Secret Mutiny Overlay Modal */}

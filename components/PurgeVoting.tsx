@@ -71,7 +71,7 @@ export default function PurgeVoting({
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto my-4 glass-card p-6 border border-slate-600 space-y-5">
+    <div className="w-full max-w-xl mx-auto my-4 glass-card purge-card p-6 space-y-5">
       {/* Step Indicator Header */}
       <div className="flex items-center justify-between border-b border-gray-800 pb-3">
         <div className="flex items-center gap-2 text-amber-200 font-black text-xs uppercase tracking-widest">

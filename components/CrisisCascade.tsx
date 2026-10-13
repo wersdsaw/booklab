@@ -47,7 +47,7 @@ export default function CrisisCascade({player,crisis,cascade,onSubmitDecision}:{
     </section>}
     {player.alibi&&<section className="glass-card alibi-card p-5"><div className="eyebrow">ПРИВАТНЕ АЛІБІ / ЛИШЕ ДЛЯ ВАС</div><p className="text-sm mt-3 text-gray-200 leading-relaxed">{player.alibi}</p></section>}
     {exhausted&&(decided||!myTurn)&&<div className="decision-card exhausted-option" aria-label="Light — Варіант вичерпано"><span className="exhausted-badge">Exhausted (Light used)</span><span>{exhausted.text}</span></div>}
-    <section className="glass-card p-5 space-y-4">
+    <section className="glass-card decision-panel p-5 space-y-4">
       <div className="flex items-center justify-between gap-3"><h4 className="cascade-prompt text-sm text-gray-200 font-semibold">{config.prompt}</h4><span className="text-[10px] text-gray-400">{player.level}</span></div>
       {decided?<div className="decision-status decision-locked" role="status"><CheckCircle size={22}/><p>{group?.isResolved?'Рішення зафіксовано. Очікуйте наступного етапу.':`Очікуємо решту команди: ${Object.keys(group?.votes||{}).length}/${group?.expectedVoterIds.length} рішень.`}</p>{group?.winningText&&<p className="text-gray-400">{group.winningText}</p>}</div>
       :!myTurn?<div className="decision-status"><Clock size={22}/><p>{cascade.currentStep==='head'?'Керівники ухвалюють рішення.':cascade.currentStep==='teamLead'?'Тімліди передають директиви.':'Очікуємо завершення каскаду.'}</p></div>
