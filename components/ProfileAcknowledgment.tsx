@@ -29,7 +29,7 @@ export default function ProfileAcknowledgment({
         className="glass-card w-full text-left p-4 flex items-center justify-between cursor-pointer border border-gray-700 hover:border-gray-500 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-black text-amber-200 text-lg">
+          <div className="profile-avatar w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg">
             {player.name.charAt(0)}
           </div>
           <div>
@@ -106,15 +106,15 @@ export default function ProfileAcknowledgment({
 
             {/* Secret Flaw Block (if assigned) */}
             {player.flaw ? (
-              <div className="p-4 rounded-lg bg-slate-900/60 border border-slate-600 space-y-2.5">
-                <div className="flex items-center gap-2 text-amber-200 font-black text-sm uppercase tracking-wider">
-                  <ShieldAlert className="w-5 h-5 text-amber-200 animate-pulse" />
+              <div className="profile-flaw p-4 rounded-lg space-y-2.5">
+                <div className="flex items-center gap-2 text-red-400 font-black text-sm uppercase tracking-wider">
+                  <ShieldAlert className="w-5 h-5 text-red-400 animate-pulse" />
                   <span>ТАЄМНА ВАДА: {player.flaw.name}</span>
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <div className="p-2.5 bg-black/50 rounded border border-slate-700 text-amber-300 text-xs">
-                    <span className="font-bold uppercase text-amber-200 block mb-0.5">
+                  <div className="p-2.5 bg-black/50 rounded border border-red-900/60 text-red-200 text-xs">
+                    <span className="font-bold uppercase text-red-400 block mb-0.5">
                       Критичне правило поведінки:
                     </span>
                     {player.flaw.behaviorRestriction}

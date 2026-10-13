@@ -106,9 +106,9 @@ export default function HostDashboard({
       {/* ─── TOP COMMAND BAR ────────────────────────────────────── */}
       <header className="border-b border-gray-800 bg-black/60 backdrop-blur-md px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <Skull className="w-7 h-7 text-amber-200 animate-pulse" />
+          <Skull className="host-emblem w-7 h-7 animate-pulse" />
           <div>
-            <h1 className="text-base sm:text-lg font-black uppercase tracking-widest text-amber-200 ">
+            <h1 className="host-title text-base sm:text-lg font-black uppercase tracking-widest">
               КОМАНДНИЙ ЦЕНТР СЕО
             </h1>
             <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider block">
@@ -147,7 +147,7 @@ export default function HostDashboard({
             )}
           </div>
 
-          <div className="px-3 py-1 rounded bg-slate-900/60 border border-slate-600 text-amber-200 font-bold text-xs uppercase tracking-wider">
+          <div className="host-phase px-3 py-1 rounded font-bold text-xs uppercase tracking-wider">
             Фаза: {gameState.phase}
           </div>
         </div>
@@ -156,14 +156,14 @@ export default function HostDashboard({
       {/* ─── SUBHEADER ACTION TOOLBAR ────────────────────────────── */}
       <DockActions>
         {/* Quick Phase Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="host-controls flex items-center gap-2 flex-wrap">
           {gameState.phase === 'LOBBY' && (
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={onStartGame}
                 disabled={!canStartGame}
                 aria-describedby="lobby-start-status"
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
+                className="host-command px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
               >
                 <Play className="w-3.5 h-3.5" />
                 <span>Запустити гру (Start Simulation)</span>
@@ -188,7 +188,7 @@ export default function HostDashboard({
           {gameState.phase === 'INTRO_CINEMATIC' && (
             <button
               onClick={onFinishIntro}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              className="host-command px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
             >
               <FastForward className="w-3.5 h-3.5" />
               <span>Пропустити інтро → Ознайомлення</span>
@@ -206,7 +206,7 @@ export default function HostDashboard({
           {gameState.phase === 'CASCADE' && (
             <button
               onClick={onAdvanceToNegotiation}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              className="host-command px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
             >
               <FastForward className="w-3.5 h-3.5" />
               <span>Завершити каскад → Таймер 7:00</span>
@@ -234,7 +234,7 @@ export default function HostDashboard({
               </button>
               <button
                 onClick={onForceStartVoting}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
+                className="host-command px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
               >
                 Перейти до чистки (Голосування)
               </button>
@@ -248,7 +248,7 @@ export default function HostDashboard({
               </span>
               <button
                 onClick={onForceTallyVotes}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
+                className="host-command px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"
               >
                 Завершити голосування → Обговорення
               </button>
@@ -258,7 +258,7 @@ export default function HostDashboard({
           {gameState.phase === 'VOTE_RESULTS' && (
             <button
               onClick={onNextCrisis}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              className="host-command px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
             >
               <FastForward className="w-3.5 h-3.5" />
               <span>Перейти до наступної кризи ({gameState.currentCrisisIndex + 2} / 5)</span>
@@ -332,9 +332,10 @@ export default function HostDashboard({
         {/* Left Column: Interactive Visuals & Controls (2 cols) */}
         <div className="lg:col-span-2 border-r border-gray-800 p-6 overflow-y-auto space-y-6">
           {/* Navigation Tabs */}
-          <div className="flex border border-gray-800 rounded-lg p-1 bg-black/40 gap-1 text-xs">
+          <div className="host-tabs flex border border-gray-800 rounded-lg p-1 bg-black/40 gap-1 text-xs">
             <button
               onClick={() => setActiveTab('tree')}
+              aria-pressed={activeTab === 'tree'}
               className={`flex-1 py-2 font-bold uppercase tracking-wider rounded transition-colors ${
                 activeTab === 'tree' ? 'bg-red-600/30 text-amber-200 border border-slate-600' : 'text-gray-400 hover:text-gray-200'
               }`}
@@ -344,6 +345,7 @@ export default function HostDashboard({
             </button>
             <button
               onClick={() => setActiveTab('crises')}
+              aria-pressed={activeTab === 'crises'}
               className={`flex-1 py-2 font-bold uppercase tracking-wider rounded transition-colors ${
                 activeTab === 'crises' ? 'bg-amber-600/30 text-amber-400 border border-amber-500/40' : 'text-gray-400 hover:text-gray-200'
               }`}
@@ -353,6 +355,7 @@ export default function HostDashboard({
             </button>
             <button
               onClick={() => setActiveTab('votes')}
+              aria-pressed={activeTab === 'votes'}
               className={`flex-1 py-2 font-bold uppercase tracking-wider rounded transition-colors ${
                 activeTab === 'votes' ? 'bg-purple-600/30 text-purple-400 border border-purple-500/40' : 'text-gray-400 hover:text-gray-200'
               }`}
@@ -507,13 +510,13 @@ export default function HostDashboard({
                       key={cr.id}
                       className={`glass-card p-4 border transition-all ${
                         isCurrent
-                          ? 'border-slate-600 bg-slate-900/60 '
+                          ? 'crisis-alert'
                           : 'border-gray-800 bg-black/40'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-mono uppercase text-amber-200 font-bold">
+                          <span className="host-crisis-label text-[10px] font-mono uppercase font-bold">
                             КРИЗА #{cr.id}
                           </span>
                           <h4 className="font-bold text-sm text-gray-100">{cr.title}</h4>
@@ -524,7 +527,7 @@ export default function HostDashboard({
                         <button
                           disabled={gameState.phase !== 'CRISIS_TRIGGER' || cr.id !== gameState.currentCrisisIndex + 1}
                           onClick={() => onTriggerCrisis(cr.id)}
-                          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex-shrink-0 transition-colors"
+                          className="host-command px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider flex-shrink-0 transition-colors"
                         >
                           Запустити
                         </button>
@@ -572,7 +575,7 @@ export default function HostDashboard({
         </div>
 
         {/* Right Column: Live Audit Log / Mutation Terminal (1 col) */}
-        <div className="flex flex-col h-[600px] lg:h-[calc(100vh-100px)] bg-black/60">
+        <div className="host-audit flex flex-col h-[600px] lg:h-[calc(100vh-100px)] bg-black/60">
           {/* Terminal Header & Filter Bar */}
           <div className="p-3 border-b border-gray-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
@@ -614,11 +617,11 @@ export default function HostDashboard({
                     entry.isGhostMessage
                       ? 'text-purple-300 bg-purple-950/20 p-2 rounded border border-purple-500/30'
                       : isSabotage
-                      ? 'text-amber-200 bg-slate-900/60 p-2 rounded border border-slate-700 font-bold'
+                      ? 'audit-sabotage p-2 rounded font-bold'
                       : entry.type === 'vote'
                       ? 'text-amber-300'
                       : entry.type === 'crisis'
-                      ? 'text-gray-300'
+                      ? 'audit-crisis'
                       : 'text-gray-400'
                   }`}
                 >
@@ -626,7 +629,7 @@ export default function HostDashboard({
                   <span
                     className={
                       isSabotage
-                        ? 'text-amber-200 font-extrabold'
+                        ? 'text-red-400 font-extrabold'
                         : entry.isGhostMessage
                         ? 'text-purple-400 font-bold'
                         : 'text-green-400'
