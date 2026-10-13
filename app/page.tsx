@@ -515,7 +515,6 @@ export default function HomePage() {
                   required
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="напр. Олексій Мельник"
                   className="w-full px-4 py-3 bg-black/60 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:border-green-500 focus:outline-none"
                 />
               </div>

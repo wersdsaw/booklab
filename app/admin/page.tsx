@@ -186,7 +186,7 @@ export default function AdminPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Введіть пароль (за замовчуванням: admin)"
+                placeholder="Введіть пароль"
                 className="w-full px-4 py-3 bg-black/60 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:border-red-500 focus:outline-none font-mono"
               />
               <KeyRound className="w-4 h-4 text-gray-500 absolute right-3 top-3.5" />
@@ -205,9 +205,6 @@ export default function AdminPage() {
             </button>
           </form>
 
-          <div className="pt-2 text-[11px] text-gray-500 font-mono">
-            Підказка: стандартний пароль — <strong className="text-gray-300">admin</strong>
-          </div>
         </div>
       </div>
     );

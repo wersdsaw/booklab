@@ -1,31 +1,48 @@
-CRITICAL UPDATE 2: LOBBY REWORK, CONSENSUS ENGINE, AND SECURITY
+**ROLE & OBJECTIVE**
+Act as a Principal Full-Stack Software Engineer and Lead Narrative Game Designer. Build "Corporate Bunker", a premium, real-time multiplayer web application for exactly 15 players + 1 Host. This is a high-stakes, state-driven psychological corporate survival game based on Patrick Lencioni's "The Five Dysfunctions of a Team".
 
-Please implement the following critical updates to the game's architecture, flow, and UI/UX. These override any previous instructions regarding the login flow and state advancement.
+**TECH STACK & ARCHITECTURE**
+*   **Frontend:** Next.js (React), Tailwind CSS, Framer Motion (crucial for cinematic layout transitions, full-screen text reveals, and micro-interactions).
+*   **Backend/State Management:** Use a robust real-time sync solution (Supabase, Firebase, or WebSockets/Socket.io). State must sync instantly across all clients.
+*   **Deployment:** Production-ready (e.g., Vercel).
 
-1. Hidden Host Route & Security (No Player Room Creation)
+**DYNAMIC "PARASITE" MECHANIC (SECRET FLAWS)**
+Exactly 5 players get a **Secret Flaw** (Distributed: 1 Head, 2 TLs, 2 Managers). Flawed players WIN if they survive all 5 rounds without getting fired.
+*   **Flaw Burnout (Graduation):** Flawed players DO NOT get constructive options during a crisis. They receive 3 toxic options: Light, Medium, Hard. If they select "Light" (e.g., stay silent), it BURNS and becomes unavailable for future crises. They are forced into Medium/Hard actions (sabotage) later.
+*   **Superpowers:** Unlocked at Crisis 3. It acts as an "Ultimate" (e.g., "Team Shield" to block a vote against them, or "Veto" to stop a vote).
+*   **The Alibi System:** Immediately after a Flawed player submits a toxic choice, their UI displays an "Alibi" script (e.g., "Tell everyone you did this to protect the team from burnout") to help them lie during the verbal debrief.
 
-- Remove the Host/Player toggle from the main landing page (`/`).
-- The root page (`/`) must STRICTLY be a Player Join screen. Normal users should have absolutely no UI elements suggesting they can create a room.
-- Host Access: Create a separate, hidden route (e.g., /host or `/admin`). The Game Master will navigate here directly to create and manage the room.
+**THE 7-PHASE GAME LOOP**
 
-2. Two-Step Join Flow & Dynamic Role Limits
+*   **PHASE 1: SECURE LOBBY & INTRO**
+    *   Players visit `/`. Enter Room Code, Name, and select available Role/Department. Dynamic limits prevent over-selection (e.g., Max 2 Heads). Normal users cannot see Host creation tools.
+    *   Host (via `/admin`) clicks "Start". Cinematic text scrolls: *"We were thriving. Suddenly, the market collapsed. We must purge the rot to survive."*
+*   **PHASE 2: FOCUS MODE UI (PROFILE ACKNOWLEDGMENT)**
+    *   Players read their Lore & Flaw. They MUST click a green "Ознайомився" (Acknowledged) button. 
+    *   *UI Polish:* The massive profile UI smoothly collapses into a thin, expandable top bar (Focus Mode) to clear visual clutter.
+*   **PHASE 3: CINEMATIC CRISIS TRIGGER**
+    *   Host launches 1 of 5 Crises. Starts at Heads level.
+    *   *UI Polish:* Screen darkens, Crisis text appears centrally, large and cinematic. Player reads, clicks "Understood", and ONLY THEN do action buttons appear.
+*   **PHASE 4: THE CASCADE & CORPORATE SPLIT**
+    *   Info flows: Heads ➔ Team Leads ➔ Managers. ALL players in a tier must vote. Majority rules.
+    *   *Corporate Split:* If the 2 Heads vote for different solutions, the system randomly splits the company: Half the Team Leads receive Head A's directive, the other half receive Head B's.
+*   **PHASE 5: THE TRIBUNE DEBRIEF (Sequential Speaking)**
+    *   Host triggers Debrief. A 7:00 countdown starts.
+    *   *Sequential UI:* The UI dictates whose turn it is to speak verbally. Screen shows: "Current Speaker: Head 1. Up next: Team Lead 2." The active speaker's screen prompts: "You chose [Action]. Justify it!". The active speaker clicks "Defended / Pass Turn" to pass the spotlight. Host can force-skip.
+*   **PHASE 6: 3-STEP PURGE VOTING**
+    *   Prompt: "Ready to vote? [Yes/No]". If ANY player clicks "No", add exactly +1:00. If all click "Yes", voting begins.
+    *   Vote UI: 1) Select Department. 2) Select Person. 3) Text input: "Why did they make the wrong choice?". Player with most votes is fired.
+    *   *Endgame:* 5 rounds = 5 fired. If 1+ Flawed players survive to the end, the company loses.
+*   **PHASE 7: GHOST MODE**
+    *   Fired players turn grayscale (Read-Only). They watch the cascade.
+    *   They have a "Ghost Chat" input. Messages go directly to the Host Command Center to be read aloud.
 
-- Step 1 (Room Connect): The player goes to /, enters the Room Code, and clicks "Connect".
-- Step 2 (Data & Role Selection): Once successfully connected to the room lobby, the player is prompted to enter their Name and select a Role/Department.
-- Host Role Configuration: When the Host creates the room, they have a settings panel to define player limits for specific tiers (e.g., Max Heads: 2, Max Team Leads: 4, Managers: Unlimited).
-- Dynamic UI: In the Player's Step 2 dropdown, if a role's limit is reached (e.g., 2 players have already claimed "Head"), that role is disabled/grayed out or hidden from the list.
+**HOST COMMAND CENTER (Admin Panel)**
+*   **Live Node Tree (Visual Map):** Visual hierarchy map (2 Heads -> 4 TLs -> 9 Managers). Instead of a cluttered text log, generate a visual Node Tree where Green lines show constructive paths and Red lines show flawed/toxic paths.
+*   **Kick Functionality:** Disconnect any player instantly.
 
-3. Host Kick Functionality
-
-- In the Host Command Center (both in the pre-game lobby and during the active game), the Host must have a "Kick" (Remove) button next to every player's name in the Node Tree/List.
-- Clicking this instantly severs the WebSocket connection for that player, removes them from the DB state, and shows a "You have been removed by the Admin" screen on the player's device.
-
-4. The Consensus Engine (Handling Multiple Players in the Same Role)
-
-- The Bug: Currently, if there are 3 Team Leads, one person clicking a choice might advance the state for everyone. This is incorrect.
-- The Fix: Implement a "Consensus Engine" for Phase progression. When a crisis hits a specific tier (e.g., Level 3 Managers in the Forward department), ALL active players in that specific group must submit their vote.
-- UI Updates: While waiting, players who voted see: _"Waiting for other colleagues to decide..."_. The Host dashboard shows exactly who is pending (e.g., "Forward Managers: 2/3 voted").
-- Resolution Logic: Once all votes in that tier are in, the system calculates the majority. The choice with the most votes wins and drives the narrative forward. If there is a tie, the system either randomly selects between the tied choices OR prompts the Host to break the tie manually.
-- Flawed vs. Normal Dynamics: This means if 1 Flawed Manager votes for "Sabotage", but 2 Normal Managers vote for "Work Hard", the constructive choice wins (but the sabotage attempt is recorded in the Host's logs). If Flawed players hold the majority, the toxic choice wins.
-
-Please explicitly confirm how you will structure the database/state schema to handle the Consensus Engine (tracking expected votes vs. submitted votes per department/tier).
+**IMPLEMENTATION INSTRUCTIONS**
+1. Design a strictly normalized DB schema / State Machine capable of handling the 3-tier Consensus Engine, Corporate Splits, and Ghost mode.
+2. Build the UI with a "Dark Cyberpunk / Corporate Thriller" aesthetic using glassmorphism.
+3. Ensure bulletproof WebSocket reconnection logic (if a player refreshes, they instantly rejoin their exact state).
+4. Output the complete, production-ready codebase separated by components.
