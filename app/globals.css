@@ -213,17 +213,21 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .protocol-unlock{color:#f87171;}
 .protocol-unlock h2{text-shadow:0 0 20px #ef444466;}
 /* Ghost view keeps the original dark background with muted gray game cards. */
+.ghost-status-banner{width:100%;max-width:576px;margin:16px auto;padding:16px 20px;border:1px solid #777783;border-left:4px solid #c4c4d0;border-radius:8px;background:#1d1d25;color:#f3f4f6;font:800 clamp(12px,3.3vw,15px)/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;letter-spacing:1.4px;text-align:center;text-transform:uppercase;box-shadow:0 0 16px #c4c4d014;}
 .ghost-panel{background:#19191f;border-color:#45454f;box-shadow:0 8px 24px #0004;color:#f3f4f6;}
 .ghost-panel .text-gray-400,.ghost-panel .text-gray-500{color:#d1d1db;}
-.ghost-panel input{background:#101015;border-color:#85858e;color:#f5f5f7;}
+.ghost-panel input{min-width:0;background:#15151c;border-color:#9898aa;color:#f5f5f7;box-shadow:0 0 12px #c4c4e026,inset 0 0 8px #c4c4e008;transition:border-color .2s,box-shadow .2s;}
+.ghost-panel input:hover{border-color:#b8b8cb;}
+.ghost-panel input:focus{border-color:#d4d4eb;outline:2px solid #c4c4e044;outline-offset:2px;box-shadow:0 0 18px #c4c4e040;}
 .ghost-panel input::placeholder{color:#b8b8c3;}
-.ghost-panel button{background:#656571;color:#fff;}
-.ghost-panel button:disabled{opacity:1;background:#42424d;color:#aaaab5;}
-.ghost-mode-active .crisis-alert,.ghost-mode-active .alibi-card,.ghost-mode-active .decision-panel{background:#16161d;border:1px solid #3b3b48;box-shadow:0 8px 24px #0005;}
+.ghost-panel button{background:#656571;border:1px solid #aaaabd;color:#fff;box-shadow:0 0 12px #c4c4e026;transition:background .2s,box-shadow .2s;}
+.ghost-panel button:hover:not(:disabled),.ghost-panel button:focus-visible{background:#777787;border-color:#d4d4eb;box-shadow:0 0 18px #c4c4e044;}
+.ghost-panel button:disabled{opacity:1;background:#42424d;border-color:#77778a;color:#aaaab5;box-shadow:0 0 8px #c4c4e014;}
+.ghost-mode-active .crisis-alert,.ghost-mode-active .alibi-card,.ghost-mode-active .decision-panel{background:#202028;border:1px solid #484854;box-shadow:0 8px 24px #0005;}
 .ghost-mode-active .crisis-alert .eyebrow,.ghost-mode-active .alibi-card .eyebrow{color:#bfc0ca;text-shadow:none;}
 .ghost-mode-active .crisis-alert .eyebrow svg{color:#bfc0ca;}
 .ghost-mode-active .alibi-card p,.ghost-mode-active .decision-status{color:#d1d5db;}
-.ghost-mode-active .decision-locked{background:#1d1d25;border-color:#494953;color:#d1d5db;box-shadow:none;}
+.ghost-mode-active .decision-locked{background:#25252e;border-color:#52525e;color:#d1d5db;box-shadow:none;}
 .game-layout{min-height:100dvh;display:flex;flex-direction:column;}
 .game-layout>.player-terminal,.game-layout>.host-dashboard{flex:1;}
 .inline-actions{position:sticky;bottom:0;z-index:10;padding:12px;border:1px solid #a6374b66;border-radius:10px;background:#100a19f2;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -6px 20px #0003,0 0 16px #ef444414;}

@@ -100,6 +100,12 @@ export default function PlayerTerminal({
 
       {/* ─── MAIN CONTENT FEED ────────────────────────────────────── */}
       <main className="flex-1 p-4 max-w-2xl w-full mx-auto space-y-4">
+        {player.isEliminated && (
+          <div role="status" className="ghost-status-banner">
+            {player.canGhostVote ? 'РЕЖИМ ПРИВИДА · ПОВЕРНУТО ПРАВО НА ОДИН ГОЛОС' : 'РЕЖИМ ПРИВИДА · ЛИШЕ ПЕРЕГЛЯД'}
+          </div>
+        )}
+
         {/* Collapsible Profile & Flaw Bar */}
         {gameState.phase !== 'LOBBY' && <ProfileAcknowledgment
           player={player}
@@ -107,11 +113,7 @@ export default function PlayerTerminal({
           isCollapsedDefault={gameState.phase !== 'PROFILE_ACK'}
         />}
 
-        {player.isEliminated && (
-          <div role="status" className="border-b border-gray-700 bg-gray-900/80 px-4 py-2 text-center text-[10px] font-mono tracking-wider text-gray-300">
-            {player.canGhostVote ? 'РЕЖИМ ПРИВИДА · ПОВЕРНУТО ПРАВО НА ОДИН ГОЛОС' : 'РЕЖИМ ПРИВИДА · ЛИШЕ ПЕРЕГЛЯД'}
-          </div>
-        )}
+
         {/* Ghost Mode Terminal if eliminated */}
         {player.isEliminated && (
           <GhostMode
