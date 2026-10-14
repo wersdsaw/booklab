@@ -1,23 +1,22 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Skull, FastForward } from 'lucide-react';
+import { motion } from 'framer-motion'
+import { FastForward, Skull } from 'lucide-react'
 
 interface CinematicIntroProps {
-  onFinish?: () => void;
-  isHost?: boolean;
+  onFinish?: () => void
+  isHost?: boolean
 }
 
 export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps) {
   const introLines = [
-    "Ми спокійно працювали в компанії.",
-    "Раптом ринок обвалився.",
-    "Тепер, щоб наша компанія залишилась цілою,",
-    "ми маємо позбутися дисфункцій, що руйнують команду.",
-    "Відділи більше не мають значення,",
-    "ми всі допомагаємо один одному.",
-  ];
+    'Ми спокійно працювали в компанії.',
+    'Раптом ринок обвалився.',
+    'Тепер, щоб наша компанія залишилась цілою,',
+    'ми маємо позбутися дисфункцій, що руйнують команду.',
+    'Відділи більше не мають значення,',
+    'ми всі допомагаємо один одному.'
+  ]
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0a0510] flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden">
@@ -31,11 +30,12 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
         transition={{
           duration: 3,
           repeat: Infinity,
-          ease: 'easeInOut',
+          ease: 'easeInOut'
         }}
         className="mb-8"
       >
-        <Skull className="w-20 h-20 text-amber-200" />
+        <div className="absolute inset-0 bg-red-600 rounded-full blur-2xl opacity-20 transform scale-75 pointer-events-none" />
+        <Skull className="w-20 h-20 text-red-500 filter drop-shadow-[0_0_15px_rgba(239,68,68,0.9)]" />
       </motion.div>
 
       {/* Narrative Crawl with Staggered Fade & Slide */}
@@ -48,14 +48,14 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
             transition={{
               delay: idx * 1.4,
               duration: 1.2,
-              ease: 'easeOut',
+              ease: 'easeOut'
             }}
             className={`font-black tracking-widest uppercase ${
               idx === 0 || idx === 1
-                ? 'text-gray-400 text-base md:text-xl'
+                ? 'text-zinc-500 text-base md:text-xl'
                 : idx === 2 || idx === 3
-                ? 'text-amber-200 text-lg md:text-2xl '
-                : 'text-green-400 text-xl md:text-3xl font-extrabold '
+                  ? 'text-red-400/80 text-lg md:text-2xl'
+                  : 'text-[#ff2a2a] text-xl md:text-3xl font-extrabold filter drop-shadow-[0_0_8px_rgba(255,42,42,0.6)]'
             }`}
           >
             {line}
@@ -73,12 +73,12 @@ export default function CinematicIntro({ onFinish, isHost }: CinematicIntroProps
         <button
           onClick={isHost ? onFinish : undefined}
           disabled={!isHost}
-          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 text-gray-200 hover:text-white rounded-lg text-sm font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 group "
+          className="px-6 py-3 bg-zinc-950/80 hover:bg-red-950/40 border border-zinc-800 hover:border-red-900/60 text-zinc-400 hover:text-red-100 rounded-lg text-sm font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 group shadow-[0_0_15px_rgba(0,0,0,0.5)]"
         >
           <span>{isHost ? 'Пропустити інтро для всіх' : 'Очікуємо ведучого…'}</span>
           <FastForward className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </motion.div>
     </div>
-  );
+  )
 }
