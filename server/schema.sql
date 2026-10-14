@@ -69,3 +69,9 @@ CREATE TABLE IF NOT EXISTS recovery_support (
  room_code TEXT NOT NULL REFERENCES rooms(code) ON DELETE CASCADE, player_id TEXT NOT NULL,
  PRIMARY KEY(room_code, player_id)
 );
+
+CREATE TABLE IF NOT EXISTS lore_history (
+ room_code TEXT NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+ story TEXT NOT NULL,
+ PRIMARY KEY(room_code, story)
+);

@@ -140,3 +140,19 @@ test('budget stabilization scales by tier rather than employee count and low-bud
   assert.deepEqual(budgets,[91,91]);
   for(const [budget,expected] of [[10,true],[9.99,false]]){const r=fixture(4);r.phase='VOTE_RESULTS';r.budget=budget;for(const p of active(r))p.flaw=null;apply(r,host,'next_crisis');assert.equal(r.isVictory,expected);}
 });
+test('host can pause, extend, restore and resume the two-minute stage before elimination',()=>{
+  const r=fixture();voting(r);assert.equal(r.timer.totalSeconds,420);
+  assert.throws(()=>apply(r,actor(active(r)[0]),'control_timer',{action:'pause'}));
+  apply(r,host,'control_timer',{action:'pause'});
+  const remaining=r.timer.remainingSeconds;
+  tick(r,Date.now()+600000);assert.equal(r.phase,'PURGE_VOTING');assert.equal(r.timer.remainingSeconds,remaining);
+  apply(r,host,'control_timer',{action:'add',seconds:30});assert.equal(r.timer.remainingSeconds,remaining+30);
+  apply(r,host,'control_timer',{action:'start'});tick(r,r.timer.deadline+1);
+  assert.equal(r.phase,'OPEN_DISCUSSION');assert.equal(r.timer.remainingSeconds,120);assert.equal(r.eliminatedThisRound,null);
+  apply(r,host,'control_timer',{action:'pause'});apply(r,host,'control_timer',{action:'add',seconds:60});
+  const store=new Store(':memory:');store.save(r);const restored=store.loadAll()[r.roomCode];store.close();
+  assert.equal(restored.timer.isRunning,false);assert.equal(restored.timer.remainingSeconds,180);
+  tick(restored,Date.now()+600000);assert.equal(restored.phase,'OPEN_DISCUSSION');assert.equal(restored.eliminatedThisRound,null);
+  apply(restored,host,'control_timer',{action:'start'});tick(restored,restored.timer.deadline+1);
+  assert.equal(restored.phase,'VOTE_RESULTS');assert.ok(restored.eliminatedThisRound);
+});

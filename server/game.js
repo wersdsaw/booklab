@@ -18,7 +18,7 @@ function log(room, type, sender, message, secret = false, isGhostMessage = false
   room.logs = room.logs.slice(-300);
 }
 function createRoom(roomCode) {
-  return { roomCode, phase: 'LOBBY', currentCrisisIndex: 0, roleLimits: { ...LIMITS }, players: {}, cascade: null, budget: 100, budgetSettledRound: -1, voteIntents: {}, recoverySupport: [], recoveryAppliedRound: -1,
+  return { roomCode, usedLoreStories: [], phase: 'LOBBY', currentCrisisIndex: 0, roleLimits: { ...LIMITS }, players: {}, cascade: null, budget: 100, budgetSettledRound: -1, voteIntents: {}, recoverySupport: [], recoveryAppliedRound: -1,
     timer: { totalSeconds: 420, remainingSeconds: 420, isRunning: false, deadline: null, votingReadyVotes: {}, readyOpen: false, readyEpoch: 0 },
     tribune: { queue: [], index: 0 }, votes: [], eliminatedThisRound: null, logs: [], isGameOver: false,
     isVictory: false, gameStartedAt: null, revision: 0 };
@@ -35,8 +35,9 @@ function addPlayer(room, input) {
   const limit = LIMITS[input.level];
   assert(limit === 0 || people.filter(p => p.level === input.level).length < limit, 'Ліміт ролі вичерпано.');
   if (input.level === LEVELS[1]) assert(!people.some(p => p.level === LEVELS[1] && p.department === department), 'У цьому відділі вже є тімлід.');
-  const usedHeadStories = people.filter(p => p.level === LEVELS[0]).map(p => p.lore.story);
-  const { salary, lore } = generateSalaryAndLore(input.level, usedHeadStories);
+  room.usedLoreStories = [...new Set([...(room.usedLoreStories || []), ...Object.values(room.players).map(p => p.lore.story)])];
+  const { salary, lore } = generateSalaryAndLore(input.level, room.usedLoreStories);
+  room.usedLoreStories.push(lore.story);
   const player = { id: randomUUID(), name, level: input.level, department, salary, lore, flaw: null,
     isAcknowledged: false, isEliminated: false, isKicked: false, shieldActive: false, socketId: '', online: true,
     lastAction: null, hasVoted: false, powerUnlockAcknowledged:false, voteSuppressed:false, canGhostVote:false, immuneActive:false, wiretapActive:false, lightBurned: false, alibi: null, understoodCrisis: null };
@@ -174,10 +175,14 @@ function apply(room, actor, event, payload = {}) {
       phase('LOBBY');
       assert(active(room).length > 0, 'Дочекайтеся приєднання хоча б одного гравця.');
       // Repair duplicate legends in rooms saved by older server versions.
-      const usedHeadStories = new Set();
-      for (const head of active(room).filter(p => p.level === LEVELS[0])) {
-        if (usedHeadStories.has(head.lore.story)) Object.assign(head, generateSalaryAndLore(head.level, [...usedHeadStories]));
-        usedHeadStories.add(head.lore.story);
+      const seenStories = new Set();
+      room.usedLoreStories = [...new Set([...(room.usedLoreStories || []), ...Object.values(room.players).map(p => p.lore.story)])];
+      for (const player of active(room)) {
+        if (seenStories.has(player.lore.story)) {
+          Object.assign(player, generateSalaryAndLore(player.level, room.usedLoreStories));
+          room.usedLoreStories.push(player.lore.story);
+        }
+        seenStories.add(player.lore.story);
       }
       let n = 0;
       const flaws = shuffle(ALL_FLAWS);
@@ -329,6 +334,11 @@ function apply(room, actor, event, payload = {}) {
     case 'reset_room': {
       const fresh = createRoom(room.roomCode);
       fresh.players = room.players;
+      fresh.usedLoreStories = [...new Set([...(room.usedLoreStories || []), ...Object.values(room.players).map(p => p.lore.story)])];
+      for (const player of Object.values(fresh.players).filter(p => !p.isKicked)) {
+        Object.assign(player, generateSalaryAndLore(player.level, fresh.usedLoreStories));
+        fresh.usedLoreStories.push(player.lore.story);
+      }
       Object.values(fresh.players).forEach(p => { p.flaw = null; p.isAcknowledged = false; p.isEliminated = !!p.isKicked; p.hasVoted = false; p.lastAction = null; p.lightBurned = false; p.alibi = null; p.shieldActive = false; p.understoodCrisis = null; p.powerUnlockAcknowledged=false;p.voteSuppressed=false;p.canGhostVote=false;p.immuneActive=false;p.wiretapActive=false; });
       Object.assign(room, fresh); break;
     }
@@ -338,6 +348,7 @@ function apply(room, actor, event, payload = {}) {
 }
 function view(room, actor) {
   const state = structuredClone(room);
+  delete state.usedLoreStories;
   if (actor.isHost) return state;
   for (const p of Object.values(state.players)) {
     delete p.socketId;

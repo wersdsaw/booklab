@@ -144,7 +144,7 @@ test('head legends never repeat even when random selection always picks the firs
     apply(r,host,'kick_player',{playerId:first.id});
     const replacement=addPlayer(r,{name:'Head Replacement',level:LEVELS[0]});
     assert.notEqual(replacement.lore.story,second.lore.story);
-    assert.equal(replacement.lore.story,first.lore.story);
+    assert.notEqual(replacement.lore.story,first.lore.story);
   } finally {Math.random=originalRandom;}
 });
 test('starting a saved lobby repairs old duplicate head legends and preserves the first head profile',()=>{

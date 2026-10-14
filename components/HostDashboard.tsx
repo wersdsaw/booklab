@@ -7,6 +7,7 @@ import { DockActions } from './ActionDock';
 import NodeTree from './NodeTree';
 import BudgetIndicator from './BudgetIndicator';
 import TimedPhase from './TimedPhase';
+import HostTimerControls from './HostTimerControls';
 import {
   Skull,
   Play,
@@ -97,9 +98,6 @@ export default function HostDashboard({
     return true;
   });
 
-  const minutes = Math.floor(gameState.timer.remainingSeconds / 60);
-  const seconds = gameState.timer.remainingSeconds % 60;
-  const timerDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   return (
     <div className="host-dashboard min-h-screen bg-[#0a0510] text-gray-100 flex flex-col font-sans">
@@ -155,6 +153,7 @@ export default function HostDashboard({
 
       {/* ─── SUBHEADER ACTION TOOLBAR ────────────────────────────── */}
       <DockActions>
+        <HostTimerControls state={gameState} onControl={onControlTimer}/>
         {/* Quick Phase Controls */}
         <div className="host-controls flex items-center gap-2 flex-wrap">
           {gameState.phase === 'LOBBY' && (
@@ -215,23 +214,6 @@ export default function HostDashboard({
 
           {gameState.phase === 'NEGOTIATION_TIMER' && (
             <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-black text-amber-400 bg-black/60 px-2 py-1 rounded border border-amber-500/30">
-                ⏱ {timerDisplay}
-              </span>
-              <button
-                onClick={() => onControlTimer(gameState.timer.isRunning ? 'pause' : 'start')}
-                className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded"
-                title={gameState.timer.isRunning ? 'Пауза' : 'Пуск'}
-              >
-                {gameState.timer.isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => onControlTimer('add', 60)}
-                className="p-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded flex items-center gap-1 text-[11px]"
-                title="+1 хвилина"
-              >
-                <PlusCircle className="w-3.5 h-3.5" /> +1хв
-              </button>
               <button
                 onClick={onForceStartVoting}
                 className="host-command px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold uppercase tracking-wider transition-all"

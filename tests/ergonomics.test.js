@@ -37,3 +37,15 @@ test('stored robotic alibis are upgraded to two natural sentences on room restor
   const result=restored.players[p.id];assert.equal((result.alibi.match(/[.!?](?:\s|$)/g)||[]).length,2);
   assert.ok(!result.alibi.includes('0.50'));assert.ok(!result.lastAction.includes('Сценарій:'));
 });
+test('host timer controls are available for voting and the discussion before elimination',()=>{
+  const HostTimerControls=loadComponent(join(__dirname,'../components/HostTimerControls.tsx')).default;
+  for(const phase of ['NEGOTIATION_TIMER','PURGE_VOTING','OPEN_DISCUSSION']){
+    const state=createRoom('timer-controls');state.phase=phase;state.timer.remainingSeconds=120;state.timer.isRunning=true;
+    let html=renderToStaticMarkup(React.createElement(HostTimerControls,{state,onControl(){}}));
+    for(const label of ['02:00','Призупинити','+30 с','+1 хв'])assert.ok(html.includes(label));
+    if(phase==='OPEN_DISCUSSION')assert.ok(html.includes('Оголосити результат'));
+    state.timer.isRunning=false;
+    html=renderToStaticMarkup(React.createElement(HostTimerControls,{state,onControl(){}}));
+    assert.ok(html.includes('Продовжити'));
+  }
+});

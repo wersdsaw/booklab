@@ -43,6 +43,7 @@ class Store {
         timer_running:r.timer.isRunning, timer_deadline:r.timer.deadline, ready_open:r.timer.readyOpen, ready_epoch:r.timer.readyEpoch,
         speaker_index:r.tribune.index, cascade_step:r.cascade?.currentStep, is_split:r.cascade?.isSplit || false,
         eliminated_id:e?.playerId, eliminated_votes:e?.votesCount, eliminated_shield:e?.hadShield });
+      for (const story of new Set([...(r.usedLoreStories || []), ...Object.values(r.players).map(p => p.lore.story)])) this.insert('lore_history', {room_code:r.roomCode,story});
       for (const p of Object.values(r.players)) {
         this.insert('players', { id:p.id, room_code:r.roomCode, name:p.name, level:p.level, department:p.department, salary:p.salary,
           lore_story:p.lore.story, lore_expenses:p.lore.expenses, lore_lifestyle:p.lore.lifestyle, acknowledged:p.isAcknowledged,
@@ -73,6 +74,7 @@ class Store {
     const rooms = {};
     for (const row of this.db.prepare('SELECT * FROM rooms').all()) {
       const r = createRoom(row.code);
+      r.usedLoreStories = this.db.prepare('SELECT story FROM lore_history WHERE room_code=?').all(row.code).map(row => row.story);
       const rows = table => this.db.prepare(`SELECT * FROM ${table} WHERE room_code=?`).all(row.code);
       Object.assign(r, { phase:row.phase, currentCrisisIndex:row.crisis_index, revision:row.revision, gameStartedAt:row.game_started_at,
         budget:row.budget,budgetSettledRound:row.budget_settled_round,recoveryAppliedRound:row.recovery_applied_round,recoverySupport:rows('recovery_support').map(v=>v.player_id),voteIntents:Object.fromEntries(rows('vote_intents').map(v=>[v.voter_id,v.target_id])),isGameOver:!!row.is_game_over, isVictory:!!row.is_victory,
@@ -87,6 +89,7 @@ class Store {
           isAcknowledged:!!p.acknowledged,isEliminated:!!p.eliminated,isKicked:!!p.kicked,shieldActive:!!p.shield,
           powerUnlockAcknowledged:!!p.power_unlock_ack,voteSuppressed:!!p.vote_suppressed,canGhostVote:!!p.ghost_vote,immuneActive:!!p.immune,wiretapActive:!!p.wiretap,lastAction:cleanChoice(p.last_action),hasVoted:!!p.has_voted,lightBurned:!!p.light_burned,alibi:p.alibi,understoodCrisis:p.understood_crisis,online:false,socketId:''};
       }
+      r.usedLoreStories = [...new Set([...r.usedLoreStories, ...Object.values(r.players).map(p => p.lore.story)])];
       if (row.cascade_step) {
         r.cascade = {crisisId:r.currentCrisisIndex+1,currentStep:row.cascade_step,isSplit:!!row.is_split,headDecision:null,teamLeadDecisions:{},managerDecisions:{},mutinyProposal:null,consensusGroups:{},directives:{}};
         for (const g of rows('consensus_groups')) {

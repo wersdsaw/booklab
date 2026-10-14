@@ -236,3 +236,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Expanded profiles must remain fully readable above their acknowledgment button. */
 .profile-card .inline-actions{position:relative;bottom:auto;}
+
+.host-timer-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 24px 12px;padding:14px 16px;border:1px solid #f59e0b55;border-radius:8px;background:#120d1b;}
+.host-timer-controls .secondary-action{min-height:36px;padding:8px 12px;}
+@media(max-width:640px){.host-timer-controls{margin:0 16px 12px;gap:8px;}}
