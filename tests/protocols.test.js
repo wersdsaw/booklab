@@ -26,25 +26,25 @@ function startBallots(r){apply(r,host,'advance_to_negotiation');apply(r,host,'co
 function voting(r){complete(r);startBallots(r);}
 function powerPlayer(r,id){const p=active(r).find(p=>p.flaw?.powerId===id);assert.ok(p);apply(r,actor(p),'acknowledge_superpower_unlock');return p;}
 function vote(r,p,target){apply(r,actor(p),'submit_purge_vote',{targetPlayerId:target.id,targetDepartment:target.department,reason:'Конкретний провал у кризі'});}
-test('45 authored options and concise two-sentence alibis omit scenario metadata',()=>{
+test('225 crisis-specific options and paired two-sentence alibis omit scenario metadata',()=>{
   const texts=new Set(),alibis=new Set();
-  for(const level of LEVELS)for(const flaw of ALL_FLAWS){const p={name:'Tester',level,department:DEPARTMENTS[0],flaw};const options=crisisChoices(CRISES_DATA[0],p);assert.equal(options.length,3);
+  for(const crisis of CRISES_DATA)for(const level of LEVELS)for(const flaw of ALL_FLAWS){const p={name:'Tester',level,department:DEPARTMENTS[0],flaw};const options=crisisChoices(crisis,p);assert.equal(options.length,3);
     for(const option of options){
       assert.ok(!texts.has(option.text));texts.add(option.text);
-      const alibi=privateAlibi(p,option.severity);
+      const alibi=privateAlibi(p,option.severity,crisis.id);
       const sentences=alibi.split(/(?<=[.!?])\s+/u);
       assert.equal(sentences.length,2);
       assert.equal((alibi.match(/[.!?](?:\s|$)/g)||[]).length,2);
       assert.ok(alibi.length<=220);
       for(const sentence of sentences)assert.ok(sentence.split(/\s+/u).length<=20);
       const metadataPlayer={...p,name:'${scenario.title} 0.50%',department:'Бюджет = -3 / 15'};
-      assert.equal(privateAlibi(metadataPlayer,option.severity),alibi);
-      assert.ok(!alibi.includes(CRISES_DATA[0].title));
+      assert.equal(privateAlibi(metadataPlayer,option.severity,crisis.id),alibi);
+      assert.ok(!alibi.includes(crisis.title));
       assert.ok(!/[0-9%]|Сценарій:|в\.п\./.test(alibi));
       assert.ok(!option.text.includes('Сценарій:'));alibis.add(alibi);
     }
   }
-  assert.equal(texts.size,45);assert.equal(alibis.size,45);
+  assert.equal(texts.size,225);assert.equal(alibis.size,225);
 });
 test('exhausted Light remains visible but server rejects it in later crises',()=>{
   const r=fixture(),p=active(r).find(p=>p.level===LEVELS[0]&&p.flaw);p.lightBurned=true;
@@ -155,4 +155,28 @@ test('host can pause, extend, restore and resume the two-minute stage before eli
   tick(restored,Date.now()+600000);assert.equal(restored.phase,'OPEN_DISCUSSION');assert.equal(restored.eliminatedThisRound,null);
   apply(restored,host,'control_timer',{action:'start'});tick(restored,restored.timer.deadline+1);
   assert.equal(restored.phase,'VOTE_RESULTS');assert.ok(restored.eliminatedThisRound);
+});
+test('each crisis selects its own profiles while constructive decisions remain the authored scenario options',()=>{
+  const patterns=[/відео|скандал|Ringostat|груб|скарг|дзвін/iu,/розсил|цін|оплат|курс/iu,/ПУ|явк|запис|готов/iu,/відгук|скарг|партнер|навчан/iu,/аудит|скороч|останн|витрат|директор/iu];
+  for(const [index,crisis] of CRISES_DATA.entries())for(const [tier,level] of LEVELS.entries()){
+    const step=['head','teamLead','manager'][tier];
+    const clean={level,flaw:null};
+    assert.deepEqual(crisisChoices(crisis,clean),crisis.steps[step].options.filter(o=>o.type==='constructive'));
+    for(const flaw of ALL_FLAWS){
+      const player={level,flaw,lightBurned:true};const options=crisisChoices(crisis,player);
+      assert.match(options.map(o=>o.text).join(' '),patterns[index]);
+      assert.deepEqual(options.map(o=>o.id),['toxic_light','toxic_medium','toxic_hard']);
+      assert.deepEqual(options.map(o=>o.disabled),[true,false,false]);
+      assert.deepEqual(options.map(o=>o.budgetImpact),[.5,-2,-3]);
+      assert.deepEqual(options.map(o=>o.isSabotage),[false,false,true]);
+      if(crisis.id===3)assert.ok(!options.some(o=>/витік|лежить сервер|злив парол/iu.test(o.text)));
+    }
+  }
+  assert.throws(()=>crisisChoices({...CRISES_DATA[0],id:999},{level:LEVELS[2],flaw:ALL_FLAWS[0]}),/Missing personalized decision profile/);
+});
+test('committed natural alibis survive catalog changes without being rewritten on restart',()=>{
+  const r=fixture();complete(r);const player=active(r).find(p=>p.flaw);
+  player.alibi='Я хотів дати команді час на перевірку. Спершу нам потрібно було спокійно узгодити дані.';
+  const before=player.alibi;const store=new Store(':memory:');store.save(r);const restored=store.loadAll()[r.roomCode];store.close();
+  assert.equal(restored.players[player.id].alibi,before);
 });

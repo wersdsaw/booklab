@@ -224,7 +224,7 @@ function apply(room, actor, event, payload = {}) {
       p.lastAction = option.text;
       if (toxic) {
         if (option.severity === 'light') p.lightBurned = true;
-        p.alibi = privateAlibi(p, option.severity);
+        p.alibi = privateAlibi(p, option.severity, CRISES_DATA[room.currentCrisisIndex].id);
       }
       log(room, toxic ? 'sabotage' : 'cascade', p.name, option.text, true); settleCascade(room); break;
     }

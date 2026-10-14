@@ -5,6 +5,7 @@ const { ALL_FLAWS } = require('../lib/flaws');
 const { createRoom } = require('./game');
 const { privateAlibi } = require('../lib/choices');
 const cleanChoice = text => typeof text === 'string' ? text.replace(/\s+Сценарій:.*$/u, '') : text;
+const isNaturalAlibi = text => typeof text === 'string' && text.length <= 220 && (text.match(/[.!?](?:\s|$)/g) || []).length === 2 && !/[0-9%]|Сценарій:|в\.п\./u.test(text);
 class Store {
   constructor(path) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
@@ -109,7 +110,8 @@ class Store {
       for (const p of Object.values(r.players)) if (p.flaw && p.alibi) {
         const vote=Object.values(r.cascade?.consensusGroups || {}).flatMap(g=>Object.values(g.votes)).find(v=>v.playerId===p.id);
         const severity=vote?.optionId.match(/^toxic_(light|medium|hard)(?:_|$)/)?.[1];
-        if(severity)p.alibi=privateAlibi(p,severity);
+        // Preserve an already committed, concise defense from earlier catalog versions.
+        if(severity && !isNaturalAlibi(p.alibi))p.alibi=privateAlibi(p,severity,r.currentCrisisIndex+1);
       }
       r.votes=rows('purge_ballots').map(v => ({voterId:v.voter_id,voterName:r.players[v.voter_id].name,targetPlayerId:v.target_id,targetPlayerName:r.players[v.target_id].name,targetDepartment:r.players[v.target_id].department,reason:v.reason}));
       r.logs=rows('audit_entries').map(l => ({id:l.id,timestamp:l.timestamp,type:l.type,sender:l.sender,message:l.message,secret:!!l.secret,isGhostMessage:!!l.ghost}));
