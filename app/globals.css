@@ -231,18 +231,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .game-layout{min-height:100dvh;display:flex;flex-direction:column;}
 .game-layout>.player-terminal,.game-layout>.host-dashboard{flex:1;}
 .inline-actions{position:sticky;bottom:0;z-index:10;padding:12px;border:1px solid #a6374b66;border-radius:10px;background:#100a19f2;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -6px 20px #0003,0 0 16px #ef444414;}
-.has-round-timer .inline-actions{bottom:60px;}
-.round-timer-bar{position:sticky;bottom:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:60px;padding:12px max(24px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom));border-top:1px solid #b33d4d88;background:#100a19f5;backdrop-filter:blur(16px);color:#ffacbc;font:11px ui-monospace,monospace;letter-spacing:1px;box-shadow:0 -4px 18px #ef44441c;}
-.round-timer-bar strong{font-size:22px;letter-spacing:2px;}
-.round-timer-bar.timer-urgent{color:#ff8a96;border-color:#ef444477;}
-body:has(.game-layout.has-round-timer) .connection-status{bottom:72px;}
 .host-dashboard>.inline-actions{padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none;position:static;}
-@media(max-width:640px){.inline-actions{padding:10px;}.round-timer-bar{gap:12px;font-size:10px;}.round-timer-bar strong{font-size:20px;}}
+@media(max-width:640px){.inline-actions{padding:10px;}}
 
 /* Expanded profiles must remain fully readable above their acknowledgment button. */
 .profile-card .inline-actions{position:relative;bottom:auto;}
-/* Timed phases use a separate layout row, so the bottom timer cannot cover content. */
-.game-layout.has-round-timer{height:100dvh;min-height:0;overflow:hidden;}
-.has-round-timer>.player-terminal,.has-round-timer>.host-dashboard{min-height:0;overflow-y:auto;}
-.has-round-timer .inline-actions{bottom:0;}
-.round-timer-bar{position:relative;bottom:auto;flex-shrink:0;}

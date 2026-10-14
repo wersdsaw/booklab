@@ -24,7 +24,7 @@ test('round controls remain in the document without a bottom overlay',()=>{
   const html=renderToStaticMarkup(React.createElement(ActionDock,{state},React.createElement('section',null,
     React.createElement('p',null,'Round content'),React.createElement(DockActions,null,React.createElement('button',null,'Confirm')))));
   assert.ok(html.includes('inline-actions'));assert.ok(html.includes('Confirm'));
-  assert.ok(html.includes('role="timer"'));assert.ok(html.includes('01:05'));
+  assert.ok(!html.includes('role="timer"'));assert.ok(!html.includes('round-timer-bar'));assert.ok(!html.includes('has-round-timer'));
   assert.ok(!html.includes('<footer'));assert.ok(!html.includes('action-dock'));assert.ok(html.indexOf('Round content')<html.indexOf('Confirm'));
 });
 test('stored robotic alibis are upgraded to two natural sentences on room restoration',()=>{
